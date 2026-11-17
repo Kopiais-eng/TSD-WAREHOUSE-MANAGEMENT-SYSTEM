@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | SO Codes</title>
+  <script src="/theme.js"></script>
+  <script src="/sidebar.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-body:#0b0e14; --bg-sidebar:#141a24; --bg-main:#0f131a; --bg-card:#181f2b;
+      --bg-elevated:#1f2a3a; --bg-header:#111820; --bg-hover:#1a2332;
+      --border:#2a3344; --border-soft:#252f3f; --border-row:#1f2a3a;
+      --text-primary:#e2e8f0; --text-secondary:#cbd5e0; --text-muted:#7a8ba3; --text-dim:#a0b3cc;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    [data-theme="light"] {
+      --bg-body:#f1f5f9; --bg-sidebar:#ffffff; --bg-main:#f8fafc; --bg-card:#ffffff;
+      --bg-elevated:#f1f5f9; --bg-header:#f8fafc; --bg-hover:#f1f5f9;
+      --border:#e2e8f0; --border-soft:#e2e8f0; --border-row:#f1f5f9;
+      --text-primary:#0f172a; --text-secondary:#334155; --text-muted:#64748b; --text-dim:#475569;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+    body { background:var(--bg-body); display:flex; height:100vh; color:var(--text-primary); overflow:hidden; transition:background .2s ease, color .2s ease; }
+
+    /* SIDEBAR */
+    .sidebar { width:240px; background:#232c36; padding:30px 20px; display:flex; flex-direction:column; border-right:1px solid #333333; height:100vh; position:sticky; top:0; transition:width .25s ease, padding .25s ease; }
+    .sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -8px;               /* negative so scrollbar doesn't clip buttons */
+  padding: 0 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 5px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+    .sidebar-brand { text-align:center; padding-bottom:22px; margin-bottom:22px; border-bottom:1px solid rgba(255,255,255,0.3); flex-shrink:0; }
+    .brand-logo-wrap { background:#ffffff; border-radius:12px; padding:8px; margin-bottom:14px; display:inline-block; width:100%; box-sizing:border-box; }
+    .brand-logo { display:block; width:100%; max-width:160px; height:auto; margin:0 auto; }
+    .brand-divider { width:50px; height:2px; background:#ffffff; margin:10px auto 12px; border-radius:1px; opacity:.6; }
+    .brand-dept { font-size:14px; font-weight:700; letter-spacing:2.5px; color:#ffffff; text-transform:uppercase; margin-bottom:5px; }
+    .brand-tagline { font-size:9px; color:#ffffff; letter-spacing:.6px; line-height:1.5; text-transform:uppercase; font-weight:500; }
+    .side-btn { width:100%; padding:12px 16px; background:transparent; border:none; border-radius:10px; color:#ffffff; font-size:15px; font-weight:500; text-align:left; display:flex; align-items:center; gap:14px; cursor:pointer; transition:.2s ease; margin-bottom:4px; font-family:inherit; position:relative; }
+    .side-btn:hover { background:rgba(121,121,121,.4); color:#ffffff; }
+    .side-btn.active { background:#ffffff; color:#000000; font-weight:700; }
+    .side-btn.active:hover { background:#ffffff; color:#000000; }
+    .side-btn svg { width:18px; height:18px; flex-shrink:0; stroke-width:1.8; color:inherit; stroke:currentColor; }
+    .logout-btn { margin-top:auto; border-top:1px solid rgba(255,255,255,.15); padding-top:16px; color:#ffffff; }
+    .logout-btn:hover { background:rgba(220,38,38,.4); color:#ffffff; }
+    .sidebar.collapsed { width:70px; padding:30px 10px; }
+    .sidebar.collapsed .brand-dept, .sidebar.collapsed .brand-tagline, .sidebar.collapsed .brand-divider { display:none; }
+    .sidebar.collapsed .sidebar-brand { padding-bottom:16px; margin-bottom:16px; }
+    .sidebar.collapsed .brand-logo-wrap { padding:4px; border-radius:8px; margin-bottom:0; }
+    .sidebar.collapsed .brand-logo { max-width:44px; }
+
+    /* MAIN */
+    .main { flex:1; padding:30px 40px; overflow-y:auto; background:var(--bg-main); display:flex; flex-direction:column; }
+    .main-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; }
+    .main-header h1 { font-size:26px; font-weight:300; letter-spacing:1px; color:var(--text-primary); }
+    .main-header .header-right { display:flex; align-items:center; gap:14px; }
+    .main-header .user-badge { background:var(--bg-elevated); padding:8px 18px; border-radius:30px; font-size:14px; color:var(--text-dim); border:1px solid var(--border); display:flex; align-items:center; gap:6px; text-transform:uppercase; }
+    .main-header .user-badge span { color:inherit; }
+    .main-header .user-badge .role-tag { color:var(--text-primary); border-radius:12px; font-size:13.5px; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+
+    /* TOOLBAR */
+    .toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+    .toolbar-left { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .toolbar-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .search-box { display:flex; gap:8px; align-items:center; }
+    .search-box input { background:var(--bg-elevated); color:var(--text-primary); border:1px solid var(--border); padding:7px 12px; border-radius:6px; font-size:13px; min-width:240px; }
+    .search-box input:focus { outline:none; border-color:var(--accent); }
+    .search-box button { background:var(--accent); border:none; padding:7px 16px; border-radius:6px; color:var(--accent-text); font-weight:600; cursor:pointer; transition:.2s; font-family:inherit; font-size:13px; }
+    .search-box button:hover { background:var(--accent-hover); }
+    .status-filter { background:var(--bg-elevated); color:var(--text-primary); border:1px solid var(--border); padding:7px 12px; border-radius:6px; font-size:13px; font-family:inherit; cursor:pointer; }
+    .status-filter:focus { outline:none; border-color:var(--accent); }
+    .sync-btn {
+      background:#2563eb; border:none; padding:8px 16px; border-radius:6px;
+      color:#fff; font-weight:700; cursor:pointer; transition:.2s;
+      font-family:inherit; font-size:13px;
+      display:inline-flex; align-items:center; gap:6px;
+    }
+    .sync-btn:hover { background:#1d4ed8; }
+    .sync-btn:disabled { opacity:.6; cursor:not-allowed; }
+    .sync-btn.syncing { background:#6b7280; }
+    .sync-btn svg { width:14px; height:14px; stroke-width:2.2; }
+
+    .last-sync { color:var(--text-muted); font-size:12px; }
+    .last-sync b { color:var(--text-primary); }
+
+    /* STATS */
+    .stats-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:18px; }
+    .stat-card { background:var(--bg-card); border:1px solid var(--border-soft); border-radius:12px; padding:14px 18px; }
+    .stat-card .stat-value { font-size:26px; font-weight:700; color:var(--text-primary); line-height:1.1; }
+    .stat-card .stat-label { font-size:11px; text-transform:uppercase; color:var(--text-muted); letter-spacing:1px; margin-top:2px; }
+    .stat-card.green .stat-value { color:#4ade80; }
+    .stat-card.red   .stat-value { color:#ef4444; }
+    .stat-card.amber .stat-value { color:#f59e0b; }
+    .stat-card.blue  .stat-value { color:#3b82f6; }
+
+    /* TABLE */
+    .table-wrapper { background:var(--bg-card); border-radius:16px; border:1px solid var(--border-soft); overflow:hidden; display:flex; flex-direction:column; flex:1; min-height:0; }
+    .table-scroll { overflow:auto; flex:1; min-height:0; }
+    .table-scroll::-webkit-scrollbar { width:8px; height:8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; min-width:1100px; }
+    th { text-align:left; padding:12px 14px; background:var(--bg-header); color:var(--text-muted); text-transform:uppercase; font-size:10.5px; letter-spacing:1px; border-bottom:2px solid var(--border-soft); position:sticky; top:0; z-index:10; white-space:nowrap; }
+    td { padding:11px 14px; border-bottom:1px solid var(--border-row); color:var(--text-secondary); vertical-align:middle; }
+    tr:hover td { background:var(--bg-hover); }
+    .empty-row td { text-align:center; padding:40px 16px; color:var(--text-muted); font-style:italic; }
+    td.money { font-family:'Consolas','Monaco',monospace; font-weight:700; color:var(--text-primary); white-space:nowrap; text-align:right; }
+    td.so-number { font-family:'Consolas','Monaco',monospace; font-weight:700; color:var(--text-primary); }
+
+    .status-pill { padding:3px 12px; border-radius:30px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; display:inline-block; }
+    .status-pill.OPEN      { background:#2a6b3a; color:#8bdd9b; }
+    .status-pill.CLOSED    { background:#4a4a6b; color:#b0b0dd; }
+    .status-pill.CANCELLED { background:#4a2a2a; color:#f08b8b; }
+
+    /* TOAST */
+    .toast { position:fixed; top:30px; right:30px; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border); border-left:4px solid #22c55e; padding:12px 20px; border-radius:10px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.4); transform:translateX(400px); transition:.3s; z-index:99999; max-width:380px; }
+    .toast.show { transform:translateX(0); }
+    .toast.error { border-left-color:var(--accent); }
+
+    @media (max-width:768px) {
+      .sidebar { width:70px; padding:20px 10px; }
+      .sidebar .logo, .sidebar .logo-sub, .side-btn span:not(.email-badge) { display:none; }
+      .main { padding:20px; }
+      .toolbar { flex-direction:column; align-items:stretch; }
+      .search-box input { min-width:0; width:100%; }
+      .stats-row .stat-card { grid-column: span 2; }
+    }
+  </style>
+  <link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo-wrap">
+        <img src="img/logo.png" alt="Examedia" class="brand-logo" />
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-dept">TSD WMS</div>
+      <div class="brand-tagline">Technical Support Department</div>
+      <div class="brand-tagline">Warehouse Management System</div>
+    </div>
+
+    <div class="sidebar-nav">
+    <button class="side-btn" onclick="location.href='/dashboard.html'"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+    <button class="side-btn" onclick="location.href='/reports.html'"><i data-lucide="bar-chart-3"></i> <span>Reports</span></button>
+    <button class="side-btn" onclick="location.href='/inventory.html'"><i data-lucide="package"></i> <span>Inventory List</span></button>
+    <button class="side-btn" onclick="location.href='/assets.html'"><i data-lucide="hard-drive"></i> <span>Assets</span></button>
+    <button class="side-btn" onclick="location.href='/loans.html'"><i data-lucide="arrow-right-left"></i> <span>Loan Tracking</span></button>
+    <button class="side-btn" onclick="location.href='/requests.html'"><i data-lucide="inbox"></i> <span>Requests</span></button>
+    <button class="side-btn" onclick="location.href='/finance.html'"><i data-lucide="shopping-cart"></i> <span>Procurement</span></button>
+    <button class="side-btn active" onclick="location.href='/so-codes.html'"><i data-lucide="file-text"></i> <span>SO Codes</span></button>
+    <button class="side-btn" onclick="location.href='/audit.html'"><i data-lucide="search"></i> <span>Audit</span></button>
+    <button class="side-btn" onclick="location.href='/emails.html'"><i data-lucide="mail"></i> <span>Emails</span></button>
+    <button class="side-btn" onclick="location.href='/users.html'"><i data-lucide="users"></i> <span>Users</span></button>
+    <button class="side-btn" onclick="location.href='/settings.html'"><i data-lucide="settings"></i> <span>Settings</span></button>
+    <button class="side-btn logout-btn" onclick="logout()"><i data-lucide="log-out"></i> <span>Logout</span></button>
+  </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <div class="main-header">
+      <h1 style="font-weight: bold;">SO Codes <span style="font-size:14px; font-weight:400; color:var(--text-muted); margin-left:10px;">from Exa Claim</span></h1>
+      <div class="header-right">
+        <div id="notificationBell"></div>
+        <div class="user-badge">
+          👤 Welcome, <span id="userName">…</span>
+          <span class="role-tag" id="userRole"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card blue"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total</div></div>
+      <div class="stat-card green"><div class="stat-value" id="statOpen">0</div><div class="stat-label">Open</div></div>
+      <div class="stat-card"><div class="stat-value" id="statClosed">0</div><div class="stat-label">Closed</div></div>
+      <div class="stat-card red"><div class="stat-value" id="statCancelled">0</div><div class="stat-label">Cancelled</div></div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search SO number, customer, description..." onkeyup="onSearchKey(event)" />
+          <button onclick="loadSOCodes()">Search</button>
+        </div>
+        <select class="status-filter" id="statusFilter" onchange="loadSOCodes()">
+          <option value="">All statuses</option>
+        </select>
+        <span class="last-sync" id="lastSync">Last sync: —</span>
+      </div>
+      <div class="toolbar-right">
+        <button class="sync-btn" id="btnSync" onclick="triggerSync()" style="display:none;">
+          <i data-lucide="refresh-cw"></i> Sync Now
+        </button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrapper">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>SO Number</th>
+              <th>Customer</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th style="text-align:right;">Price (Excl SST)</th>
+              <th style="text-align:right;">SST</th>
+              <th style="text-align:right;">Price (Incl SST)</th>
+              <th>Contract Period</th>
+              <th style="text-align:right;">Allocated Budget</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody id="soCodesBody">
+            <tr class="empty-row"><td colspan="10">📭 Loading SO Codes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/notifications.js"></script>
+  <script src="/logout.js"></script>
+  <script src="/escape.js"></script>
+  <script>
+    let currentUser = null;
+    let lastItems = [];
+
+    // ---------- AUTH ----------
+    (async function init() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.user) { window.location.href = '/login.html'; return; }
+        currentUser = data.user;
+
+        document.getElementById('userName').textContent =
+          currentUser.full_name || currentUser.username || 'User';
+        const roleEl = document.getElementById('userRole');
+        if (roleEl) {
+          roleEl.textContent = currentUser.role;
+          roleEl.className = 'role-tag ' + currentUser.role;
+        }
+
+        if (currentUser.role === 'admin') {
+          document.getElementById('btnSync').style.display = 'inline-flex';
+        }
+
+        await loadStatuses();
+        await loadSOCodes();
+      } catch (e) {
+        console.error(e);
+        window.location.href = '/login.html';
+      }
+    })();
+
+    // ---------- LOAD STATUSES ----------
+    async function loadStatuses() {
+      try {
+        const res = await fetch('/api/so-codes/statuses', { credentials: 'include' });
+        if (!res.ok) return;
+        const list = await res.json();
+        const sel = document.getElementById('statusFilter');
+        list.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s;
+          opt.textContent = s;
+          sel.appendChild(opt);
+        });
+      } catch (e) { /* ignore */ }
+    }
+
+    // ---------- LOAD ----------
+    async function loadSOCodes() {
+      const tbody = document.getElementById('soCodesBody');
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="10">⏳ Loading…</td></tr>`;
+
+      const q = document.getElementById('searchInput').value.trim();
+      const status = document.getElementById('statusFilter').value;
+
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (status) params.set('status', status);
+      params.set('limit', '500');
+
+      try {
+        const res = await fetch('/api/so-codes?' + params.toString(), { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load');
+        const data = await res.json();
+        lastItems = data.items || [];
+        renderTable(lastItems);
+        updateStats(lastItems);
+        updateLastSync(data.last_sync);
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="10">❌ ${escapeHtml(e.message)}</td></tr>`;
+      }
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('soCodesBody');
+      if (!items || items.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="10">📭 No SO Codes found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = items.map(r => `
+        <tr>
+          <td class="so-number">${escapeHtml(r.so_number || '—')}</td>
+          <td>${escapeHtml(r.partner_customer || '—')}</td>
+          <td title="${escapeAttr(r.description || '')}">${escapeHtml((r.description || '—').substring(0, 60))}${(r.description || '').length > 60 ? '…' : ''}</td>
+          <td><span class="status-pill ${escapeAttr(r.status)}">${escapeHtml(r.status || '—')}</span></td>
+          <td class="money">${formatMoney(r.price_exc_sst)}</td>
+          <td class="money">${formatMoney(r.sst)}</td>
+          <td class="money">${formatMoney(r.price_inc_sst)}</td>
+          <td>${escapeHtml(r.contract_period || '—')}</td>
+          <td class="money">${formatMoney(r.allocated_budget)}</td>
+          <td>${formatDate(r.exa_updated_at)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function updateStats(items) {
+      const total = items.length;
+      const open = items.filter(x => x.status === 'OPEN').length;
+      const closed = items.filter(x => x.status === 'CLOSED').length;
+      const cancelled = items.filter(x => x.status === 'CANCELLED').length;
+
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statOpen').textContent = open;
+      document.getElementById('statClosed').textContent = closed;
+      document.getElementById('statCancelled').textContent = cancelled;
+    }
+
+    function updateLastSync(ts) {
+      const el = document.getElementById('lastSync');
+      if (!ts) { el.innerHTML = 'Last sync: <b>never</b>'; return; }
+      el.innerHTML = `Last sync: <b>${formatDate(ts)}</b>`;
+    }
+
+    // ---------- SYNC ----------
+    async function triggerSync() {
+      const btn = document.getElementById('btnSync');
+      btn.disabled = true;
+      btn.classList.add('syncing');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i data-lucide="loader-2"></i> Syncing…';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      try {
+        const res = await fetch('/api/admin/sync-so-codes', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Sync failed');
+
+        showToast(`✅ Synced: ${data.total} fetched · ${data.inserted} new · ${data.updated} updated`);
+        await loadSOCodes();
+      } catch (e) {
+        showToast('❌ ' + e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('syncing');
+        btn.innerHTML = orig;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    }
+
+    function onSearchKey(e) {
+      if (e.key === 'Enter') loadSOCodes();
+    }
+
+    // ---------- HELPERS ----------
+    function formatMoney(v) {
+      if (v == null || v === '') return '—';
+      const n = Number(v);
+      if (isNaN(n)) return escapeHtml(String(v));
+      return 'RM ' + n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDate(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      if (isNaN(d)) return '—';
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function escapeAttr(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    let toastTimer = null;
+    function showToast(msg, isError) {
+      let t = document.getElementById('toast');
+      if (!t) { t = document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); }
+      t.textContent = msg;
+      t.classList.toggle('error', !!isError);
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+  </script>
+  <script>
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  </script>
+</body>
+</html>

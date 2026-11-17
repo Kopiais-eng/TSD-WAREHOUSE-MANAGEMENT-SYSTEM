@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | Users</title>
+  <script src="/theme.js"></script>
+  <script src="/sidebar.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-body:#0b0e14; --bg-sidebar:#141a24; --bg-main:#0f131a; --bg-card:#181f2b;
+      --bg-elevated:#1f2a3a; --bg-header:#111820; --bg-hover:#1a2332;
+      --border:#2a3344; --border-soft:#252f3f; --border-row:#1f2a3a;
+      --text-primary:#e2e8f0; --text-secondary:#cbd5e0; --text-muted:#7a8ba3; --text-dim:#a0b3cc;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    [data-theme="light"] {
+      --bg-body:#f1f5f9; --bg-sidebar:#ffffff; --bg-main:#f8fafc; --bg-card:#ffffff;
+      --bg-elevated:#f1f5f9; --bg-header:#f8fafc; --bg-hover:#f1f5f9;
+      --border:#e2e8f0; --border-soft:#e2e8f0; --border-row:#f1f5f9;
+      --text-primary:#0f172a; --text-secondary:#334155; --text-muted:#64748b; --text-dim:#475569;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+
+    body { background:var(--bg-body); display:flex; height:100vh; color:var(--text-primary); overflow:hidden; transition:background .2s ease, color .2s ease; }
+
+    /* SIDEBAR (red theme, matches other pages) */
+    .sidebar {
+  width: 240px;
+  background: #232c36;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #333333;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -8px;               /* negative so scrollbar doesn't clip buttons */
+  padding: 0 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 5px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Brand block */
+.sidebar-brand {
+  text-align: center;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.brand-logo-wrap {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+  display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.brand-divider {
+  width: 50px;
+  height: 2px;
+  background: #ffffff;
+  margin: 10px auto 12px;
+  border-radius: 1px;
+  opacity: 0.6;
+}
+
+.brand-dept {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.brand-tagline {
+  font-size: 9px;
+  color: #ffffff;
+  letter-spacing: 0.6px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Nav buttons */
+.side-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-bottom: 4px;
+  font-family: inherit;
+  position: relative;
+}
+
+/* Hover = red with 40% opacity */
+.side-btn:hover {
+  background: rgba(121, 121, 121, 0.4);
+  color: #ffffff;
+}
+
+/* Active button */
+.side-btn.active {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+.side-btn.active:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Icons */
+.side-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  stroke-width: 1.8;
+  color: inherit;
+  stroke: currentColor;
+}
+
+/* Logout button */
+.logout-btn {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 16px;
+  color: #ffffff;
+}
+
+.logout-btn:hover {
+  background: rgba(220, 38, 38, 0.4);
+  color: #ffffff;
+}
+
+    .sidebar.collapsed { width:70px; padding:30px 10px; }
+    .sidebar.collapsed .brand-dept, .sidebar.collapsed .brand-tagline, .sidebar.collapsed .brand-divider { display:none; }
+    .sidebar.collapsed .sidebar-brand { padding-bottom:16px; margin-bottom:16px; }
+    .sidebar.collapsed .brand-logo-wrap { padding:4px; border-radius:8px; margin-bottom:0; }
+    .sidebar.collapsed .brand-logo { max-width:44px; }
+
+    /* MAIN */
+    .main { flex:1; padding:30px 40px; overflow-y:auto; background:var(--bg-main); display:flex; flex-direction:column; }
+    .main-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; }
+    .main-header h1 { font-size:26px; font-weight:300; letter-spacing:1px; color:var(--text-primary); }
+    .main-header .header-right { display:flex; align-items:center; gap:14px; }
+    .main-header .user-badge { background:var(--bg-elevated); padding:8px 18px; border-radius:30px; font-size:14px; color:var(--text-dim); border:1px solid var(--border); display:flex; align-items:center; gap:6px; text-transform:uppercase; }
+    .main-header .user-badge span { color:inherit; }
+    .main-header .user-badge .role-tag { color:var(--text-primary); border-radius:12px; font-size:13.5px; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+
+    /* Toolbar */
+    .table-controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
+    .table-controls .entries { color:var(--text-muted); font-size:14px; }
+    .table-controls .entries select { background:var(--bg-elevated); color:var(--text-primary); border:1px solid var(--border); padding:6px 12px; border-radius:6px; font-size:14px; cursor:pointer; }
+    .search-box { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .search-box input { background:var(--bg-elevated); color:var(--text-primary); border:1px solid var(--border); padding:6px 12px; border-radius:6px; font-size:13px; min-width:220px; }
+    .search-box input:focus { outline:none; border-color:var(--accent); }
+    .add-btn { background:#2a6b3a; border:none; padding:7px 16px; border-radius:6px; color:#fff; font-weight:700; cursor:pointer; transition:.2s; font-family:inherit; font-size:13px; display:inline-flex; align-items:center; gap:6px; }
+    .add-btn:hover { background:#3a8b4a; }
+
+    /* Table */
+    .table-wrapper { background:var(--bg-card); border-radius:16px; border:1px solid var(--border-soft); overflow:hidden; display:flex; flex-direction:column; flex:1; min-height:0; }
+    .table-scroll { overflow:auto; flex:1; min-height:0; }
+    .table-scroll::-webkit-scrollbar { width:8px; height:8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; min-width:1000px; }
+    th { text-align:left; padding:14px 16px; background:var(--bg-header); color:var(--text-muted); text-transform:uppercase; font-size:11px; letter-spacing:1px; border-bottom:2px solid var(--border-soft); position:sticky; top:0; z-index:2; white-space:nowrap; }
+    td { padding:12px 16px; border-bottom:1px solid var(--border-row); color:var(--text-secondary); vertical-align:middle; }
+    tr:hover td { background:var(--bg-hover); }
+    .empty-row td { text-align:center; padding:40px; color:var(--text-muted); font-style:italic; }
+    td:nth-child(2) {
+  text-transform: uppercase;
+}
+
+    .role-pill { padding:3px 12px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; display:inline-block; }
+    .role-pill.admin      { background:#6b2a2a; color:#ffffff; }
+    .role-pill.manager    { background:#6b4a2a; color:#ffffff; }
+    .role-pill.finance    { background:#2a4a6b; color:#ffffff; }
+    .role-pill.technician { background:#2a5a6b; color:#ffffff; }
+    .role-pill.user       { background:#2a3344; color:#ffffff; }
+
+    /* Action buttons */
+    .row-actions { display:flex; gap:6px; align-items:center; }
+    .btn-edit, .btn-reset-pwd {
+      border:none; padding:5px 12px; border-radius:6px; font-weight:600; font-size:12px;
+      cursor:pointer; transition:.2s; font-family:inherit; white-space:nowrap;
+    }
+    .btn-edit { background:#2a4a6b; color:#fff; }
+    .btn-edit:hover { background:#3a6a8b; }
+    .btn-reset-pwd { background:#6b5a2a; color:#fff; }
+    .btn-reset-pwd:hover { background:#8b7a3a; }
+
+    /* Modal */
+    .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center; }
+    .modal-overlay.show { display:flex; }
+    .modal-content { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:30px 35px; width:640px; max-width:95%; max-height:90vh; overflow-y:auto; box-shadow:0 25px 50px rgba(0,0,0,.5); }
+    .modal-content h2 { color:var(--text-primary); font-weight:300; letter-spacing:1px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px; }
+    .modal-content h3 { color:var(--text-primary); font-size:13px; font-weight:700; letter-spacing:1px; margin:22px 0 10px; text-transform:uppercase; border-bottom:1px dashed var(--border-soft); padding-bottom:6px; }
+    .modal-content h3:first-of-type { margin-top:0; }
+    .modal-content .form-group { margin-bottom:14px; display:flex; flex-direction:column; }
+    .modal-content .form-group label { color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; font-weight:600; }
+    .modal-content .form-group label .required { color:var(--accent); }
+    .modal-content .form-group input,
+    .modal-content .form-group select,
+    .modal-content .form-group textarea { background:var(--bg-body); color:var(--text-primary); border:1px solid var(--border); padding:10px 14px; border-radius:8px; font-size:14px; width:100%; font-family:inherit; }
+    .modal-content .form-group input:focus,
+    .modal-content .form-group select:focus { outline:none; border-color:var(--accent); }
+    .modal-content .form-group input:disabled { opacity:.6; cursor:not-allowed; }
+
+    /* Two-column layout inside modal */
+    .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media (max-width:600px) { .form-grid-2 { grid-template-columns:1fr; } }
+    .form-grid-2 .form-group { margin-bottom:0; }
+
+    .modal-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:22px; border-top:1px solid var(--border); padding-top:20px; }
+    .modal-actions button { padding:10px 24px; border:none; border-radius:8px; font-weight:600; cursor:pointer; transition:.2s; font-family:inherit; font-size:14px; }
+    .modal-actions .btn-save { background:var(--accent); color:var(--accent-text); }
+    .modal-actions .btn-save:hover { background:var(--accent-hover); }
+    .modal-actions .btn-save:disabled { opacity:.5; cursor:not-allowed; }
+    .modal-actions .btn-cancel { background:var(--bg-elevated); color:var(--text-dim); }
+    .modal-actions .btn-cancel:hover { background:var(--border); color:var(--text-primary); }
+
+    /* Reset password modal is narrower */
+    #resetPwdModal .modal-content { width:420px; }
+
+    /* Toast */
+    .toast { position:fixed; top:30px; right:30px; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border); border-left:4px solid #22c55e; padding:12px 20px; border-radius:10px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.4); transform:translateX(400px); transition:.3s; z-index:99999; max-width:380px; }
+    .toast.show { transform:translateX(0); }
+    .toast.error { border-left-color:var(--accent); }
+
+    @media (max-width:768px) {
+      .sidebar { width:70px; padding:20px 10px; }
+      .sidebar .brand-dept, .sidebar .brand-tagline, .side-btn span:not(.email-badge) { display:none; }
+      .main { padding:20px; }
+      .table-controls { flex-direction:column; align-items:stretch; }
+      .form-grid-2 { grid-template-columns:1fr; }
+    }
+  </style>
+<link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo-wrap">
+        <img src="img/logo.png" alt="Examedia" class="brand-logo" />
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-dept">TSD WMS</div>
+      <div class="brand-tagline">Technical Support Department</div>
+      <div class="brand-tagline">Warehouse Management System</div>
+    </div>
+
+     <div class="sidebar-nav">
+    <button class="side-btn" onclick="location.href='/dashboard.html'"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+    <button class="side-btn" onclick="location.href='/reports.html'"><i data-lucide="bar-chart-3"></i> <span>Reports</span></button>
+    <button class="side-btn" onclick="location.href='/inventory.html'"><i data-lucide="package"></i> <span>Inventory List</span></button>
+    <button class="side-btn" onclick="location.href='/assets.html'"><i data-lucide="hard-drive"></i> <span>Assets</span></button>
+    <button class="side-btn" onclick="location.href='/loans.html'"><i data-lucide="arrow-right-left"></i> <span>Loan Tracking</span></button>
+    <button class="side-btn" onclick="location.href='/requests.html'"><i data-lucide="inbox"></i> <span>Requests</span></button>
+    <button class="side-btn" onclick="location.href='/finance.html'"><i data-lucide="shopping-cart"></i> <span>Procurement</span></button>
+    <button class="side-btn active" onclick="location.href='/so-codes.html'"><i data-lucide="file-text"></i> <span>SO Codes</span></button>
+    <button class="side-btn" onclick="location.href='/audit.html'"><i data-lucide="search"></i> <span>Audit</span></button>
+    <button class="side-btn" onclick="location.href='/emails.html'"><i data-lucide="mail"></i> <span>Emails</span></button>
+    <button class="side-btn" onclick="location.href='/users.html'"><i data-lucide="users"></i> <span>Users</span></button>
+    <button class="side-btn" onclick="location.href='/settings.html'"><i data-lucide="settings"></i> <span>Settings</span></button>
+    <button class="side-btn logout-btn" onclick="logout()"><i data-lucide="log-out"></i> <span>Logout</span></button>
+     </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <div class="main-header">
+      <h1 style="font-weight:bold;">User Management</h1>
+      <div class="header-right">
+        <div id="notificationBell"></div>
+        <div class="user-badge">
+          👤 Welcome, <span id="userName">…</span>
+          <span class="role-tag" id="userRole"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="table-controls">
+      <div class="entries">
+        Show <select><option>25</option><option>50</option><option>100</option></select> entries
+      </div>
+      <div class="search-box">
+        <input type="text" id="searchKeyword" placeholder="Search username, name, email, role..." oninput="applySearch()" />
+        <button class="add-btn" onclick="openAddUserModal()">➕ Add User</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Full Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Department</th>
+              <th>Employee Code</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody">
+            <tr class="empty-row"><td colspan="8">📭 Loading users...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: Add / Edit User -->
+  <div class="modal-overlay" id="userModal">
+    <div class="modal-content">
+      <h2 id="userModalTitle">➕ Add New User</h2>
+
+      <!-- ACCOUNT -->
+      <h3>Account</h3>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Username <span class="required">*</span></label>
+          <input type="text" id="uUsername" />
+        </div>
+        <div class="form-group">
+          <label>Role <span class="required">*</span></label>
+          <select id="uRole">
+            <option value="" disabled>-- Select Role --</option>
+            <option value="technician"> Technician</option>
+            <option value="manager">Manager</option>
+            <option value="finance"> Finance</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid-2" id="passwordFields">
+        <div class="form-group">
+          <label>Password <span class="required">*</span></label>
+          <input type="password" id="uPassword" placeholder="Min 6 characters" />
+        </div>
+        <div class="form-group">
+          <label>Confirm Password <span class="required">*</span></label>
+          <input type="password" id="uPasswordConfirm" />
+        </div>
+      </div>
+
+      <!-- PERSONAL -->
+      <h3>Personal</h3>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Full Name <span class="required">*</span></label>
+          <input type="text" id="uFullName" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="uEmail" />
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="uPhone" placeholder="+60 12-345 6789" />
+        </div>
+        <div class="form-group">
+          <label>Employee Code</label>
+          <input type="text" id="uEmployeeCode" placeholder="e.g. EXL0044" />
+        </div>
+      </div>
+
+      <!-- ORGANIZATION -->
+      <h3>Organization</h3>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Designation</label>
+          <input type="text" id="uDesignation" placeholder="e.g. Resident Engineer" />
+        </div>
+        <div class="form-group">
+          <label>Department</label>
+          <input type="text" id="uDepartment" placeholder="e.g. IT" />
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Cost Center</label>
+          <input type="text" id="uCostCenter" placeholder="e.g. TSD HQ" />
+        </div>
+        <div class="form-group">
+          <label>Direct Manager</label>
+          <input type="text" id="uDirectManager" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Reporting General Manager</label>
+        <input type="text" id="uReportingManager" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeUserModal()">Cancel</button>
+        <button class="btn-save" id="userSaveBtn" onclick="saveUser()">Create User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Reset Password -->
+  <div class="modal-overlay" id="resetPwdModal">
+    <div class="modal-content">
+      <h2>Reset Password</h2>
+      <p style="color:var(--text-muted); font-size:13px; margin-bottom:18px;">
+        Setting a new password for <b id="resetPwdUsername" style="color:var(--accent);">…</b>
+      </p>
+
+      <div class="form-group">
+        <label>New Password <span class="required">*</span></label>
+        <input type="text" id="resetNewPwd" placeholder="Min 6 characters" />
+      </div>
+      <div class="form-group">
+        <label>Confirm Password <span class="required">*</span></label>
+        <input type="text" id="resetNewPwdConfirm" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeResetPwdModal()">Cancel</button>
+        <button class="btn-save" id="resetPwdBtn" onclick="submitResetPassword()">Reset Password</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/notifications.js"></script>
+  <script src="/logout.js"></script>
+  <script src="/escape.js"></script> 
+  <script>
+    // ---------- STATE ----------
+    let currentUser = null;
+    let allUsers = [];
+    let filteredUsers = [];
+    let editingUserId = null;
+    let resettingUserId = null;
+
+    // ---------- AUTH ----------
+    (async function init() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.user) { window.location.href = '/login.html'; return; }
+
+        currentUser = data.user;
+
+        // Admin-only page
+        if (currentUser.role !== 'admin') {
+          alert('🔒 This page is for admins only.');
+          window.location.href = '/dashboard.html';
+          return;
+        }
+
+        document.getElementById('userName').textContent =
+          currentUser.full_name || currentUser.username || 'User';
+        document.getElementById('userRole').textContent = currentUser.role;
+
+        await loadUsers();
+      } catch (e) {
+        console.error('Init failed:', e);
+        window.location.href = '/login.html';
+      }
+    })();
+
+    // ---------- LOAD USERS ----------
+    async function loadUsers() {
+      const tbody = document.getElementById('usersBody');
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">⏳ Loading users...</td></tr>`;
+
+      try {
+        const res = await fetch('/api/users', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch users');
+        allUsers = await res.json();
+        filteredUsers = allUsers;
+        renderTable(filteredUsers);
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="8">❌ Error loading users.</td></tr>`;
+      }
+    }
+
+    // ---------- RENDER TABLE ----------
+    function renderTable(data) {
+      const tbody = document.getElementById('usersBody');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="8">📭 No users found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(u => `
+        <tr>
+          <td>${u.user_id}</td>
+          <td><strong>${escapeHtml(u.username || '—')}</strong></td>
+          <td>${escapeHtml(u.full_name || '—')}</td>
+          <td>${escapeHtml(u.email || '—')}</td>
+          <td><span class="role-pill ${u.role}">${u.role}</span></td>
+          <td>${escapeHtml(u.department || '—')}</td>
+          <td>${escapeHtml(u.employee_code || '—')}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-edit" onclick="openEditUserModal(${u.user_id})">Edit</button>
+              <button class="btn-reset-pwd" onclick="openResetPwdModal(${u.user_id})">Reset Password</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ---------- SEARCH ----------
+    function applySearch() {
+      const kw = document.getElementById('searchKeyword').value.toLowerCase().trim();
+      if (!kw) { filteredUsers = allUsers; renderTable(filteredUsers); return; }
+      filteredUsers = allUsers.filter(u =>
+        `${u.username || ''} ${u.full_name || ''} ${u.email || ''} ${u.role || ''} ${u.department || ''} ${u.employee_code || ''}`
+          .toLowerCase().includes(kw)
+      );
+      renderTable(filteredUsers);
+    }
+
+    // ---------- ADD USER MODAL ----------
+    function openAddUserModal() {
+      editingUserId = null;
+      document.getElementById('userModalTitle').textContent = '➕ Add New User';
+      document.getElementById('userSaveBtn').textContent = 'Create User';
+
+      // Clear all fields
+      ['uUsername','uPassword','uPasswordConfirm','uFullName','uEmail','uPhone',
+       'uEmployeeCode','uDesignation','uDepartment','uCostCenter',
+       'uDirectManager','uReportingManager'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('uRole').value = '';
+
+      // Show + enable username and password fields
+      document.getElementById('uUsername').disabled = false;
+      document.getElementById('passwordFields').style.display = '';
+
+      document.getElementById('userModal').classList.add('show');
+    }
+
+    // ---------- EDIT USER MODAL ----------
+    function openEditUserModal(id) {
+      const u = allUsers.find(x => x.user_id === id);
+      if (!u) return;
+
+      editingUserId = id;
+      document.getElementById('userModalTitle').textContent = `Edit User — ${u.username}`;
+      document.getElementById('userSaveBtn').textContent = 'Save Changes';
+
+      // Prefill
+      document.getElementById('uUsername').value = u.username || '';
+      document.getElementById('uUsername').disabled = true;   // can't change username
+      document.getElementById('uRole').value = u.role || '';
+      document.getElementById('uFullName').value = u.full_name || '';
+      document.getElementById('uEmail').value = u.email || '';
+      document.getElementById('uPhone').value = u.phone || '';
+      document.getElementById('uEmployeeCode').value = u.employee_code || '';
+      document.getElementById('uDesignation').value = u.designation || '';
+      document.getElementById('uDepartment').value = u.department || '';
+      document.getElementById('uCostCenter').value = u.cost_center || '';
+      document.getElementById('uDirectManager').value = u.direct_manager || '';
+      document.getElementById('uReportingManager').value = u.reporting_manager || '';
+
+      // Hide password fields (use Reset Password for that)
+      document.getElementById('passwordFields').style.display = 'none';
+
+      document.getElementById('userModal').classList.add('show');
+    }
+
+    function closeUserModal() {
+      document.getElementById('userModal').classList.remove('show');
+      editingUserId = null;
+    }
+
+    // ---------- SAVE USER (Add or Edit) ----------
+    async function saveUser() {
+      const btn = document.getElementById('userSaveBtn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving…';
+
+      const username = document.getElementById('uUsername').value.trim();
+      const role     = document.getElementById('uRole').value;
+      const fullName = document.getElementById('uFullName').value.trim();
+      const email    = document.getElementById('uEmail').value.trim();
+      const phone    = document.getElementById('uPhone').value.trim();
+      const empCode  = document.getElementById('uEmployeeCode').value.trim();
+      const design   = document.getElementById('uDesignation').value.trim();
+      const dept     = document.getElementById('uDepartment').value.trim();
+      const cc       = document.getElementById('uCostCenter').value.trim();
+      const dm       = document.getElementById('uDirectManager').value.trim();
+      const rm       = document.getElementById('uReportingManager').value.trim();
+
+      try {
+        if (editingUserId) {
+          // EDIT
+          const res = await fetch(`/api/users/${editingUserId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              full_name: fullName, email, role, department: dept,
+              employee_code: empCode, designation: design, phone,
+              cost_center: cc, direct_manager: dm, reporting_manager: rm
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to update user.');
+          showToast('✅ User updated.');
+        } else {
+          // ADD
+          const password        = document.getElementById('uPassword').value;
+          const passwordConfirm = document.getElementById('uPasswordConfirm').value;
+
+          if (!username || !password || !fullName || !role) {
+            throw new Error('Username, password, full name, and role are required.');
+          }
+          if (password.length < 6) throw new Error('Password must be at least 6 characters.');
+          if (password !== passwordConfirm) throw new Error('Passwords do not match.');
+
+          const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              username, password, full_name: fullName, email, role, department: dept,
+              employee_code: empCode, designation: design, phone,
+              cost_center: cc, direct_manager: dm, reporting_manager: rm
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to create user.');
+          showToast('✅ User created.');
+        }
+
+        closeUserModal();
+        await loadUsers();
+      } catch (e) {
+        showToast('❌ ' + e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    // ---------- RESET PASSWORD MODAL ----------
+    function openResetPwdModal(id) {
+      const u = allUsers.find(x => x.user_id === id);
+      if (!u) return;
+
+      resettingUserId = id;
+      document.getElementById('resetPwdUsername').textContent = u.username;
+      document.getElementById('resetNewPwd').value = '';
+      document.getElementById('resetNewPwdConfirm').value = '';
+      document.getElementById('resetPwdModal').classList.add('show');
+    }
+
+    function closeResetPwdModal() {
+      document.getElementById('resetPwdModal').classList.remove('show');
+      resettingUserId = null;
+    }
+
+    async function submitResetPassword() {
+      if (!resettingUserId) return;
+
+      const pwd = document.getElementById('resetNewPwd').value;
+      const confirm = document.getElementById('resetNewPwdConfirm').value;
+
+      if (!pwd || pwd.length < 6) { showToast('Password must be at least 6 characters.', true); return; }
+      if (pwd !== confirm) { showToast('Passwords do not match.', true); return; }
+
+      const btn = document.getElementById('resetPwdBtn');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '⏳ Resetting…';
+
+      try {
+        const res = await fetch(`/api/users/${resettingUserId}/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ new_password: pwd })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed.');
+
+        showToast('✅ ' + data.message);
+        closeResetPwdModal();
+      } catch (e) {
+        showToast('❌ ' + e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    // ---------- HELPERS ----------
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    let toastTimer = null;
+    function showToast(msg, isError) {
+      let t = document.getElementById('toast');
+      if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+      t.textContent = msg;
+      t.classList.toggle('error', !!isError);
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>

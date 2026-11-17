@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | Loan Tracking</title>
+  <script src="/theme.js"></script>
+  <script src="/sidebar.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* ---------- THEME VARIABLES ---------- */
+    :root,
+    [data-theme="dark"] {
+      --bg-body:        #0b0e14;
+      --bg-sidebar:     #141a24;
+      --bg-main:        #0f131a;
+      --bg-card:        #181f2b;
+      --bg-elevated:    #1f2a3a;
+      --bg-header:      #111820;
+      --bg-hover:       #1a2332;
+      --border:         #2a3344;
+      --border-soft:    #252f3f;
+      --border-row:     #1f2a3a;
+      --text-primary:   #e2e8f0;
+      --text-secondary: #cbd5e0;
+      --text-muted:     #7a8ba3;
+      --text-dim:       #a0b3cc;
+      --accent:         #ef4444;
+      --accent-hover:   #dc2626;
+      --accent-text:    #ffffff;
+    }
+
+    [data-theme="light"] {
+      --bg-body:        #f1f5f9;
+      --bg-sidebar:     #ffffff;
+      --bg-main:        #f8fafc;
+      --bg-card:        #ffffff;
+      --bg-elevated:    #f1f5f9;
+      --bg-header:      #f8fafc;
+      --bg-hover:       #f1f5f9;
+      --border:         #e2e8f0;
+      --border-soft:    #e2e8f0;
+      --border-row:     #f1f5f9;
+      --text-primary:   #0f172a;
+      --text-secondary: #334155;
+      --text-muted:     #64748b;
+      --text-dim:       #475569;
+      --accent:         #ef4444;
+      --accent-hover:   #dc2626;
+      --accent-text:    #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background: var(--bg-body);
+      display: flex;
+      height: 100vh;
+      color: var(--text-primary);
+      overflow: hidden;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    /* ---------- SIDEBAR (RED THEME) ---------- */
+    .sidebar {
+  width: 240px;
+  background: #232c36;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #333333;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -8px;               /* negative so scrollbar doesn't clip buttons */
+  padding: 0 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 5px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Brand block */
+.sidebar-brand {
+  text-align: center;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.brand-logo-wrap {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+  display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.brand-divider {
+  width: 50px;
+  height: 2px;
+  background: #ffffff;
+  margin: 10px auto 12px;
+  border-radius: 1px;
+  opacity: 0.6;
+}
+
+.brand-dept {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.brand-tagline {
+  font-size: 9px;
+  color: #ffffff;
+  letter-spacing: 0.6px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Nav buttons */
+.side-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-bottom: 4px;
+  font-family: inherit;
+  position: relative;
+}
+
+/* Hover = red with 40% opacity */
+.side-btn:hover {
+  background: rgba(121, 121, 121, 0.4);
+  color: #ffffff;
+}
+
+/* Active button */
+.side-btn.active {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+.side-btn.active:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Icons */
+.side-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  stroke-width: 1.8;
+  color: inherit;
+  stroke: currentColor;
+}
+
+/* Logout button */
+.logout-btn {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 16px;
+  color: #ffffff;
+}
+
+.logout-btn:hover {
+  background: rgba(220, 38, 38, 0.4);
+  color: #ffffff;
+}
+
+    .sidebar.collapsed {
+      width: 70px;
+      padding: 30px 10px;
+    }
+    .sidebar.collapsed .brand-dept,
+    .sidebar.collapsed .brand-tagline,
+    .sidebar.collapsed .brand-divider {
+      display: none;
+    }
+    .sidebar.collapsed .sidebar-brand {
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    .sidebar.collapsed .brand-logo-wrap {
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 0;
+    }
+    .sidebar.collapsed .brand-logo {
+      max-width: 44px;
+    }
+
+    /* ---------- MAIN CONTENT ---------- */
+    .main {
+      flex: 1;
+      padding: 30px 40px;
+      overflow-y: auto;
+      background: var(--bg-main);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+
+    .main-header h1 { font-size: 26px; font-weight: 300; letter-spacing: 1px; color: var(--text-primary); }
+
+    .main-header .header-right { display: flex; align-items: center; gap: 14px; }
+
+    .main-header .user-badge {
+      background: var(--bg-elevated);
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 14px;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      display: flex;
+      text-transform: uppercase;
+      align-items: center;
+      gap: 6px;
+    }
+    .main-header .user-badge span { color: inherit; }
+    .main-header .user-badge .role-tag { color: var(--text-primary); border-radius: 12px; font-size: 13.5px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+    /* ---------- STATS OVERVIEW ---------- */
+    .stats-overview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .stat-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 12px 25px;
+      flex: 1 0 auto;
+      min-width: 130px;
+      text-align: center;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    .stat-item:hover { border-color: var(--border); background: var(--bg-elevated); }
+    .stat-item.active-filter { border-color: var(--accent); background: var(--bg-elevated); }
+
+    .stat-item .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+    .stat-item .stat-label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; margin-top: 2px; }
+
+    .stat-item.active   .stat-value { color: #4ade80; }
+    .stat-item.warning  .stat-value { color: #f59e0b; }
+    .stat-item.danger   .stat-value { color: var(--accent); }
+
+    /* ---------- TABLE CONTROLS ---------- */
+    .table-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .table-controls .entries { color: var(--text-muted); font-size: 14px; }
+    .table-controls .entries select {
+      background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border);
+      padding: 6px 12px; border-radius: 6px; font-size: 14px; cursor: pointer;
+    }
+
+    .search-box { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .search-box input {
+      background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border);
+      padding: 6px 12px; border-radius: 6px; font-size: 13px; min-width: 220px;
+    }
+    .search-box input:focus { outline: none; border-color: var(--accent); }
+
+    .search-box button {
+      background: var(--accent); border: none; padding: 6px 18px; border-radius: 6px;
+      color: var(--accent-text); font-weight: 600; cursor: pointer; transition: 0.2s; font-family: inherit;
+    }
+    .search-box button:hover { background: var(--accent-hover); }
+
+    /* ---------- SCROLLABLE TABLE ---------- */
+    .table-wrapper {
+      background: var(--bg-card);
+      border-radius: 16px;
+      border: 1px solid var(--border-soft);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .table-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+    .table-scroll::-webkit-scrollbar { width: 8px; }
+    .table-scroll::-webkit-scrollbar-track { background: var(--bg-header); }
+    .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .table-scroll::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1200px; }
+
+    th {
+      text-align: left; padding: 14px 12px; background: var(--bg-header); color: var(--text-muted);
+      text-transform: uppercase; font-size: 11px; letter-spacing: 1px;
+      border-bottom: 2px solid var(--border-soft); position: sticky; top: 0; z-index: 10; white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    td {
+      padding: 12px 12px;
+      border-bottom: 1px solid var(--border-row);
+      color: var(--text-secondary);
+      vertical-align: middle;
+    }
+
+    tr:hover td { background: var(--bg-hover); }
+
+    /* Overdue row highlight */
+    tr.overdue-row td { background: #2a1a1a; }
+    tr.overdue-row:hover td { background: #3a2020; }
+    [data-theme="light"] tr.overdue-row td { background: #fef2f2; }
+    [data-theme="light"] tr.overdue-row:hover td { background: #fee2e2; }
+
+    .empty-row td { text-align: center; padding: 40px 16px; color: var(--text-muted); font-style: italic; font-size: 16px; letter-spacing: 1px; }
+
+    /* ---------- STATUS BADGES ---------- */
+    .status-badge {
+      padding: 3px 12px; border-radius: 30px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      display: inline-block; white-space: nowrap; letter-spacing: 0.3px;
+    }
+    .status-badge.active    { background: #41d265; color: #fefffe; }
+    .status-badge.returned  { background: #41d265; color: #fefefe; }
+    .status-badge.overdue   { background: #ce3d3d; color: #fdfcfc; }
+    .status-badge.pending   { background: #917935; color: #f6f6f6; }
+
+    /* ---------- PAYMENT BADGES ---------- */
+    .payment-badge {
+      padding: 2px 10px; border-radius: 30px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      display: inline-block; white-space: nowrap;
+    }
+    .payment-badge.unpaid  { background: #ce3d3d; color: #fcfcfc; }
+    .payment-badge.paid    { background: #41d265; color: #ffffff; }
+    .payment-badge.partial { background: #917935; color: #ffffff; }
+
+    /* ⭐ NEW — no charge (free loan) */
+    .payment-badge.no-charge { background: #475569; color: #cbd5e0; }
+    [data-theme="light"] .payment-badge.no-charge { background: #e2e8f0; color: #475569; }
+
+    /* ---------- ACTION BUTTONS ---------- */
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: stretch;
+      min-width: 100px;
+    }
+
+    .btn-return {
+      width: 100%;
+      background: #2a6b3a; border: none; padding: 5px 12px; border-radius: 6px;
+      font-weight: 600; font-size: 12px; color: #ffffff; cursor: pointer; transition: 0.2s;
+      font-family: inherit;
+    }
+    .btn-return:hover { background: #3a8b4a; }
+
+    .btn-pay {
+      width: 100%;
+      background: #2a4a6b; border: none; padding: 5px 12px; border-radius: 6px;
+      font-weight: 600; font-size: 12px; color: #ffffff; cursor: pointer; transition: 0.2s;
+      font-family: inherit;
+    }
+    .btn-pay:hover { background: #3a6a8b; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 70px; padding: 20px 10px; }
+      .sidebar .logo, .sidebar .logo-sub, .side-btn span:not(.email-badge) { display: none; }
+      .main { padding: 20px; }
+      .table-controls { flex-direction: column; align-items: stretch; }
+      .stats-overview .stat-item { flex: 1 1 40%; }
+    }
+  </style>
+<link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="sidebar-brand">
+      <div class="brand-logo-wrap">
+        <img src="img/logo.png" alt="Examedia" class="brand-logo" />
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-dept">TSD WMS</div>
+      <div class="brand-tagline">Technical Support Department</div>
+      <div class="brand-tagline">Warehouse Management System</div>
+    </div>
+
+    <!-- NAVIGATION -->
+    <div class="sidebar-nav">
+    <button class="side-btn" onclick="location.href='/dashboard.html'"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+    <button class="side-btn" onclick="location.href='/reports.html'"><i data-lucide="bar-chart-3"></i> <span>Reports</span></button>
+    <button class="side-btn" onclick="location.href='/inventory.html'"><i data-lucide="package"></i> <span>Inventory List</span></button>
+    <button class="side-btn" onclick="location.href='/assets.html'"><i data-lucide="hard-drive"></i> <span>Assets</span></button>
+    <button class="side-btn" onclick="location.href='/loans.html'"><i data-lucide="arrow-right-left"></i> <span>Loan Tracking</span></button>
+    <button class="side-btn" onclick="location.href='/requests.html'"><i data-lucide="inbox"></i> <span>Requests</span></button>
+    <button class="side-btn" onclick="location.href='/finance.html'"><i data-lucide="shopping-cart"></i> <span>Procurement</span></button>
+    <button class="side-btn active" onclick="location.href='/so-codes.html'"><i data-lucide="file-text"></i> <span>SO Codes</span></button>
+    <button class="side-btn" onclick="location.href='/audit.html'"><i data-lucide="search"></i> <span>Audit</span></button>
+    <button class="side-btn" onclick="location.href='/emails.html'"><i data-lucide="mail"></i> <span>Emails</span></button>
+    <button class="side-btn" onclick="location.href='/users.html'"><i data-lucide="users"></i> <span>Users</span></button>
+    <button class="side-btn" onclick="location.href='/settings.html'"><i data-lucide="settings"></i> <span>Settings</span></button>
+    <button class="side-btn logout-btn" onclick="logout()"><i data-lucide="log-out"></i> <span>Logout</span></button>
+     </div>
+
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+
+    <div class="main-header">
+      <h1 style="font-weight: bold;">Loan Tracking</h1>
+
+      <div class="header-right">
+        <div id="notificationBell"></div>
+
+        <div class="user-badge">
+          👤 Welcome, <span id="userName">…</span>
+          <span class="role-tag" id="userRole"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-overview">
+      <div class="stat-item active" onclick="applyStatusFilter('active', this)">
+        <div class="stat-value" id="stat-active">0</div>
+        <div class="stat-label">Active Loans</div>
+      </div>
+      <div class="stat-item warning" onclick="applyStatusFilter('due_soon', this)">
+        <div class="stat-value" id="stat-due">0</div>
+        <div class="stat-label">Due Soon (3 days)</div>
+      </div>
+      <div class="stat-item danger" onclick="applyStatusFilter('overdue', this)">
+        <div class="stat-value" id="stat-overdue">0</div>
+        <div class="stat-label">Overdue</div>
+      </div>
+      <div class="stat-item" onclick="applyStatusFilter('returned', this)">
+        <div class="stat-value" id="stat-returned">0</div>
+        <div class="stat-label">Returned</div>
+      </div>
+    </div>
+
+    <!-- Table Controls -->
+    <div class="table-controls">
+      <div class="entries">
+        Show <select><option>25</option><option>50</option><option>100</option></select> entries
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="searchKeyword" placeholder="Search customer, part, serial..." onkeyup="applySearch()" />
+        <button onclick="applySearch()">Search</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Customer</th>
+              <th>Contact</th>
+              <th>Part Number</th>
+              <th>Serial #</th>
+              <th>Qty</th>
+              <th>Loan Date</th>
+              <th>Due Date</th>
+              <th>Rate (RM)</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="loansBody">
+            <tr class="empty-row"><td colspan="12">📭 Loading loans...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/notifications.js"></script>
+  <script src="/logout.js"></script>
+  <script src="/escape.js"></script> 
+  <script>
+    // ---------- STATE ----------
+    let currentUser = null;
+    let loansData = [];
+    let currentFilter = null;
+
+    // ---------- AUTH ----------
+    (async function initUser() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.user) { window.location.href = '/login.html'; return; }
+
+        currentUser = data.user;
+        document.getElementById('userName').textContent =
+          currentUser.full_name || currentUser.username || 'User';
+
+        const roleEl = document.getElementById('userRole');
+        if (roleEl) {
+          roleEl.textContent = currentUser.role;
+          roleEl.className = 'role-tag ' + currentUser.role;
+        }
+
+        loadLoans();
+      } catch (e) {
+        console.error('Auth failed:', e);
+        window.location.href = '/login.html';
+      }
+    })();
+
+    // ---------- LOAD LOANS ----------
+    async function loadLoans() {
+      const tbody = document.getElementById('loansBody');
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="12">⏳ Loading loans...</td></tr>`;
+
+      try {
+        const res = await fetch('/api/loans', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load');
+        loansData = await res.json();
+        renderTable(loansData);
+        updateStats();
+
+        // ⭐ Auto-apply filter from URL — AFTER data + stats are ready
+        const urlFilter = new URLSearchParams(location.search).get('filter');
+        if (urlFilter === 'overdue' || urlFilter === 'active') {
+          const card = document.querySelector(`.stat-item[onclick*="${urlFilter}"]`);
+          if (card) card.click();
+        }
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="12">❌ Error loading loans.</td></tr>`;
+      }
+    }
+
+    // ---------- HELPERS ----------
+    function today() {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function isOverdue(loan) {
+      if (loan.status !== 'active') return false;
+      const due = new Date(loan.due_date);
+      due.setHours(0, 0, 0, 0);
+      return due < today();
+    }
+
+    function isDueSoon(loan) {
+      if (loan.status !== 'active') return false;
+      const due = new Date(loan.due_date);
+      due.setHours(0, 0, 0, 0);
+      const diff = (due - today()) / (1000 * 60 * 60 * 24);
+      return diff >= 0 && diff <= 3;
+    }
+
+    function daysLabel(loan) {
+      const due = new Date(loan.due_date);
+      due.setHours(0, 0, 0, 0);
+      const diff = Math.round((due - today()) / (1000 * 60 * 60 * 24));
+      if (diff < 0) return `${Math.abs(diff)}d overdue`;
+      if (diff === 0) return 'Due today';
+      return `${diff}d left`;
+    }
+
+    function fmtDate(s) {
+      if (!s) return '—';
+      return new Date(s).toLocaleDateString('en-GB');
+    }
+
+    // ---------- RENDER ----------
+    function renderTable(data) {
+      const tbody = document.getElementById('loansBody');
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="12">📭 No loans found.</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      data.forEach(loan => {
+        const overdue = isOverdue(loan);
+        const statusClass = overdue ? 'overdue' : (loan.status || 'active');
+
+        // ⭐ Determine if this loan has no charge
+        const isFree = !loan.total_charge || parseFloat(loan.total_charge) === 0;
+
+        // ⭐ Action cell
+        let actionCell = '—';
+        if (loan.status === 'active') {
+          actionCell = `
+            <div class="action-buttons">
+              <button class="btn-return" onclick="returnLoan(${loan.loan_id})">📥 Mark Returned</button>
+              ${(!isFree && loan.payment_status !== 'paid')
+                ? `<button class="btn-pay" onclick="markPaid(${loan.loan_id})">💰 Mark Paid</button>`
+                : ''}
+            </div>`;
+        }
+
+        // ⭐ Payment badge
+        const paymentBadge = isFree
+  ? `<span class="payment-badge no-charge">NO CHARGE</span>`
+  : `<span class="payment-badge ${escapeAttr(loan.payment_status || 'unpaid')}">${escapeHtml((loan.payment_status || 'unpaid').toUpperCase())}</span>`;
+
+        html += `<tr class="${overdue ? 'overdue-row' : ''}">
+          <td>#${loan.loan_id}</td>
+          <td><strong>${escapeHtml(loan.customer_name || '—')}</strong></td>
+          <td>
+            ${escapeHtml(loan.contact_person || '—')}
+            ${loan.contact_phone ? `<div style="color:#7a8ba3; font-size:11px;">${escapeHtml(loan.contact_phone)}</div>` : ''}
+          </td>
+          <td>${escapeHtml(loan.part || '—')}</td>
+          <td>${escapeHtml(loan.serial || '—')}</td>
+          <td>${escapeHtml(loan.qty || 0)}</td>
+          <td>${escapeHtml(fmtDate(loan.loan_date))}</td>
+          <td>
+            ${escapeHtml(fmtDate(loan.due_date))}
+            ${loan.status === 'active'
+              ? `<div style="color:${overdue ? '#ef6b6b' : '#7a8ba3'}; font-size:11px;">${daysLabel(loan)}</div>`
+              : ''}
+          </td>
+          <td>${loan.rate ? 'RM ' + parseFloat(loan.rate).toFixed(2) : '—'}</td>
+          <td><span class="status-badge ${escapeAttr(statusClass)}">${escapeHtml(overdue ? 'OVERDUE' : loan.status)}</span></td>
+          <td>${paymentBadge}</td>
+          <td>${actionCell}</td>
+        </tr>`;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // ---------- STATS ----------
+    function updateStats() {
+      const active   = loansData.filter(l => l.status === 'active').length;
+      const dueSoon  = loansData.filter(isDueSoon).length;
+      const overdue  = loansData.filter(isOverdue).length;
+      const returned = loansData.filter(l => l.status === 'returned').length;
+
+      document.getElementById('stat-active').textContent = active;
+      document.getElementById('stat-due').textContent = dueSoon;
+      document.getElementById('stat-overdue').textContent = overdue;
+      document.getElementById('stat-returned').textContent = returned;
+    }
+
+    // ---------- FILTER ----------
+    function applyStatusFilter(type, element) {
+      document.querySelectorAll('.stat-item').forEach(el => el.classList.remove('active-filter'));
+
+      if (currentFilter === type) {
+        currentFilter = null;
+        renderTable(loansData);
+        document.getElementById('searchKeyword').value = '';
+        return;
+      }
+
+      currentFilter = type;
+      element.classList.add('active-filter');
+
+      let filtered = [];
+      if (type === 'active')         filtered = loansData.filter(l => l.status === 'active');
+      else if (type === 'due_soon')  filtered = loansData.filter(isDueSoon);
+      else if (type === 'overdue')   filtered = loansData.filter(isOverdue);
+      else if (type === 'returned')  filtered = loansData.filter(l => l.status === 'returned');
+
+      renderTable(filtered);
+    }
+
+    function applySearch() {
+      const kw = document.getElementById('searchKeyword').value.toLowerCase().trim();
+      if (!kw) { renderTable(loansData); return; }
+      const filtered = loansData.filter(l =>
+        `${l.customer_name || ''} ${l.part || ''} ${l.serial || ''} ${l.contact_person || ''}`.toLowerCase().includes(kw)
+      );
+      renderTable(filtered);
+    }
+
+    // ---------- ACTIONS ----------
+    async function returnLoan(id) {
+      if (!confirm(`Mark this loan as returned? Stock will be restored to inventory.`)) return;
+      try {
+        const res = await fetch(`/api/loans/${id}/return`, {
+          method: 'PATCH',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to return');
+        alert('✅ Loan marked as returned. Inventory updated.');
+        loadLoans();
+      } catch (e) {
+        alert('❌ ' + e.message);
+      }
+    }
+
+    async function markPaid(id) {
+      if (!confirm('Mark this loan as fully paid?')) return;
+      try {
+        const res = await fetch(`/api/loans/${id}/pay`, {
+          method: 'PATCH',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update payment');
+        alert('✅ Payment marked as paid.');
+        loadLoans();
+      } catch (e) {
+        alert('❌ ' + e.message);
+      }
+    }
+  </script>
+  <script>
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

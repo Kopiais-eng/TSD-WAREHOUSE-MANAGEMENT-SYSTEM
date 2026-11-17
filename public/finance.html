@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | Finance</title>
+  <script src="/theme.js"></script>
+  <script src="/sidebar.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-body:#0b0e14; --bg-sidebar:#141a24; --bg-main:#0f131a; --bg-card:#181f2b;
+      --bg-elevated:#1f2a3a; --bg-header:#111820; --bg-hover:#1a2332;
+      --border:#2a3344; --border-soft:#252f3f; --border-row:#1f2a3a;
+      --text-primary:#e2e8f0; --text-secondary:#cbd5e0; --text-muted:#7a8ba3; --text-dim:#a0b3cc;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    [data-theme="light"] {
+      --bg-body:#f1f5f9; --bg-sidebar:#ffffff; --bg-main:#f8fafc; --bg-card:#ffffff;
+      --bg-elevated:#f1f5f9; --bg-header:#f8fafc; --bg-hover:#f1f5f9;
+      --border:#e2e8f0; --border-soft:#e2e8f0; --border-row:#f1f5f9;
+      --text-primary:#0f172a; --text-secondary:#334155; --text-muted:#64748b; --text-dim:#475569;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+    body { background:var(--bg-body); display:flex; height:100vh; color:var(--text-primary); overflow:hidden; transition:background .2s ease, color .2s ease; }
+
+    /* SIDEBAR */
+    .sidebar { width:240px; background:#232c36; padding:30px 20px; display:flex; flex-direction:column; border-right:1px solid #333333; height:100vh; position:sticky; top:0; transition:width .25s ease, padding .25s ease; overflow:hidden; }
+    .sidebar-nav { flex:1; overflow-y:auto; overflow-x:hidden; margin:0 -8px; padding:0 8px; }
+    .sidebar-nav::-webkit-scrollbar { width:5px; }
+    .sidebar-nav::-webkit-scrollbar-track { background:transparent; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:3px; }
+    .sidebar-nav::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.3); }
+    .sidebar-brand { text-align:center; padding-bottom:22px; margin-bottom:22px; border-bottom:1px solid rgba(255,255,255,0.3); flex-shrink:0; }
+    .brand-logo-wrap { background:#ffffff; border-radius:12px; padding:8px; margin-bottom:14px; display:inline-block; width:100%; box-sizing:border-box; }
+    .brand-logo { display:block; width:100%; max-width:160px; height:auto; margin:0 auto; }
+    .brand-divider { width:50px; height:2px; background:#ffffff; margin:10px auto 12px; border-radius:1px; opacity:.6; }
+    .brand-dept { font-size:14px; font-weight:700; letter-spacing:2.5px; color:#ffffff; text-transform:uppercase; margin-bottom:5px; }
+    .brand-tagline { font-size:9px; color:#ffffff; letter-spacing:.6px; line-height:1.5; text-transform:uppercase; font-weight:500; }
+    .side-btn { width:100%; padding:12px 16px; background:transparent; border:none; border-radius:10px; color:#ffffff; font-size:15px; font-weight:500; text-align:left; display:flex; align-items:center; gap:14px; cursor:pointer; transition:.2s ease; margin-bottom:4px; font-family:inherit; position:relative; flex-shrink:0; }
+    .side-btn:hover { background:rgba(121,121,121,.4); color:#ffffff; }
+    .side-btn.active { background:#ffffff; color:#000000; font-weight:700; }
+    .side-btn.active:hover { background:#ffffff; color:#000000; }
+    .side-btn svg { width:18px; height:18px; flex-shrink:0; stroke-width:1.8; color:inherit; stroke:currentColor; }
+    .logout-btn { margin-top:auto; border-top:1px solid rgba(255,255,255,.15); padding-top:16px; color:#ffffff; }
+    .logout-btn:hover { background:rgba(220,38,38,.4); color:#ffffff; }
+    .sidebar.collapsed { width:70px; padding:30px 10px; }
+    .sidebar.collapsed .brand-dept, .sidebar.collapsed .brand-tagline, .sidebar.collapsed .brand-divider { display:none; }
+    .sidebar.collapsed .sidebar-brand { padding-bottom:16px; margin-bottom:16px; }
+    .sidebar.collapsed .brand-logo-wrap { padding:4px; border-radius:8px; margin-bottom:0; }
+    .sidebar.collapsed .brand-logo { max-width:44px; }
+
+    /* MAIN */
+    .main { flex:1; padding:30px 40px; overflow-y:auto; background:var(--bg-main); display:flex; flex-direction:column; }
+    .main-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; }
+    .main-header h1 { font-size:26px; font-weight:300; letter-spacing:1px; color:var(--text-primary); }
+    .main-header .header-right { display:flex; align-items:center; gap:14px; }
+    .main-header .user-badge { background:var(--bg-elevated); padding:8px 18px; border-radius:30px; font-size:14px; color:var(--text-dim); border:1px solid var(--border); display:flex; align-items:center; gap:6px; text-transform:uppercase; }
+    .main-header .user-badge span { color:inherit; }
+    .main-header .user-badge .role-tag { color:var(--text-primary); border-radius:12px; font-size:13.5px; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+
+    /* STATS */
+    .stats-overview { display:flex; flex-wrap:wrap; gap:15px; margin-bottom:25px; }
+    .stat-item { background:var(--bg-card); border:1px solid var(--border-soft); border-radius:12px; padding:12px 25px; flex:1 0 auto; min-width:120px; text-align:center; }
+    .stat-item .stat-value { font-size:28px; font-weight:700; color:var(--text-primary); line-height:1.2; }
+    .stat-item .stat-label { font-size:11px; text-transform:uppercase; color:var(--text-muted); letter-spacing:1px; margin-top:2px; }
+
+    /* TABS */
+    .tabs { display:flex; gap:5px; margin-bottom:20px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    .tab-btn { background:transparent; border:none; padding:10px 20px; color:var(--text-muted); cursor:pointer; font-size:14px; font-weight:600; border-bottom:2px solid transparent; transition:.2s; font-family:inherit; position:relative; }
+    .tab-btn:hover { color:var(--text-primary); }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-btn .tab-count { background:var(--border); color:var(--text-dim); border-radius:20px; padding:1px 8px; font-size:11px; margin-left:6px; }
+    .tab-btn.active .tab-count { background:var(--accent); color:var(--accent-text); }
+    .tab-content { display:none; flex-direction:column; flex:1; }
+    .tab-content.active { display:flex; }
+
+    /* TABLE */
+    .table-wrapper { background:var(--bg-card); border-radius:16px; border:1px solid var(--border-soft); overflow:hidden; display:flex; flex-direction:column; flex:1; min-height:0; }
+    .table-scroll { overflow-y:auto; flex:1; min-height:0; }
+    .table-scroll::-webkit-scrollbar { width:8px; }
+    .table-scroll::-webkit-scrollbar-track { background:var(--bg-header); }
+    .table-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; min-width:900px; }
+    th { text-align:left; padding:14px 16px; background:var(--bg-header); color:var(--text-muted); text-transform:uppercase; font-size:11px; letter-spacing:1px; border-bottom:2px solid var(--border-soft); position:sticky; top:0; z-index:10; white-space:nowrap; }
+    td { padding:12px 16px; border-bottom:1px solid var(--border-row); color:var(--text-secondary); vertical-align:middle; }
+    tr:hover td { background:var(--bg-hover); }
+    .empty-row td { text-align:center; padding:40px 16px; color:var(--text-muted); font-style:italic; }
+
+    /* STATUS BADGES */
+    .status-badge { padding:4px 14px; border-radius:30px; font-size:12px; font-weight:600; display:inline-block; text-transform:uppercase; }
+    .status-badge.approved { background:#2a6b3a; color:#8bdd9b; }
+    .status-badge.pending_quotation { background:#6b5a2a; color:#ffffff; }
+    .status-badge.pending_manager_approval { background:#6b4a2a; color:#ffffff; }
+    .status-badge.rejected { background:#6b2a2a; color:#ffffff; }
+    .status-badge.pending_purchase { background:#2a4a6b; color:#ffffff; }
+    .status-badge.purchased { background:#2a5a6b; color:#ffffff; }
+    .status-badge.shipped { background:#4a4a6b; color:#ffffff; }
+    .status-badge.delivered { background:#2a6b5a; color:#ffffff; }
+    .status-badge.pending_user_confirmation { background:#2a6b3a; color:#ffffff; }
+    .status-badge.completed { background:#1f4a2a; color:#ffffff; }
+
+    /* BUTTONS */
+    .btn-primary { background:#8a3a3a; border:none; padding:5px 14px; border-radius:6px; font-weight:600; font-size:12px; color:var(--accent-text); cursor:pointer; transition:.2s; }
+    .btn-primary:hover { background:#e85555; }
+    .btn-email { background:#375494; border:none; padding:5px 14px; border-radius:6px; font-weight:600; font-size:12px; color:#ffffff; cursor:pointer; transition:.2s; display:inline-flex; align-items:center; gap:5px; text-decoration:none; font-family:inherit; }
+    .btn-email:hover { background:#0f4cf4; }
+    .quote-actions { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .btn-secondary { background:var(--bg-elevated); border:none; padding:5px 14px; border-radius:6px; font-weight:600; font-size:12px; color:var(--text-dim); cursor:pointer; transition:.2s; }
+    .btn-secondary:hover { background:var(--border); color:var(--text-primary); }
+    .btn-success { background:#2a6b3a; border:none; padding:5px 14px; border-radius:6px; font-weight:600; font-size:12px; color:#ffffff; cursor:pointer; transition:.2s; }
+    .btn-success:hover { background:#3a8b4a; }
+    .btn-danger { background:#6b2a2a; border:none; padding:5px 14px; border-radius:6px; font-weight:600; font-size:12px; color:#ffffff; cursor:pointer; transition:.2s; }
+    .btn-danger:hover { background:#8b3a3a; }
+
+    /* SO CODE COMBOBOX */
+    .so-combo { position:relative; }
+    .so-combo-input { background:var(--bg-body) !important; color:var(--text-primary) !important; border:1px solid var(--border) !important; padding:10px 40px 10px 14px !important; border-radius:8px !important; font-size:14px !important; width:100% !important; cursor:pointer; }
+    .so-combo-input:focus { outline:none; border-color:var(--accent) !important; }
+    .so-combo-input::placeholder { color:var(--text-muted); }
+    .so-combo-clear { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:4px 6px; border-radius:4px; transition:.15s; line-height:1; }
+    .so-combo-clear:hover { background:var(--bg-elevated); color:var(--accent); }
+    .so-combo-dropdown { position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,.4); max-height:320px; overflow:hidden; z-index:100; display:flex; flex-direction:column; }
+    .so-combo-list { overflow-y:auto; max-height:280px; }
+    .so-combo-list::-webkit-scrollbar { width:6px; }
+    .so-combo-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    .so-combo-option { padding:10px 14px; cursor:pointer; font-size:13px; color:var(--text-secondary); border-bottom:1px solid var(--border-row); display:flex; flex-direction:column; gap:2px; transition:background .12s; }
+    .so-combo-option:last-child { border-bottom:none; }
+    .so-combo-option:hover { background:var(--bg-hover); }
+    .so-combo-option.selected { background:var(--bg-elevated); color:var(--accent); font-weight:700; }
+    .so-combo-option.none-option { color:var(--text-muted); font-style:italic; background:var(--bg-header); border-bottom:1px solid var(--border); font-weight:600; font-size:12.5px; }
+    .so-combo-option.none-option:hover { background:var(--bg-elevated); color:var(--text-primary); }
+    .so-combo-option .so-line1 { color:var(--text-primary); font-weight:600; font-size:13px; }
+    .so-combo-option .so-line2 { color:var(--text-muted); font-size:11px; }
+    .so-combo-empty { padding:20px 14px; text-align:center; color:var(--text-muted); font-style:italic; font-size:12.5px; }
+
+    /* TRACKING CELL */
+    .tracking-cell { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .tracking-badge { display:inline-flex; align-items:center; gap:5px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text-primary); padding:3px 10px; border-radius:20px; font-family:'Consolas','Monaco',monospace; font-size:11.5px; font-weight:700; letter-spacing:.3px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tracking-badge svg { width:12px; height:12px; stroke-width:2.2; flex-shrink:0; }
+    .btn-edit-tracking { background:transparent; border:1px solid var(--border); color:var(--text-muted); padding:3px 6px; border-radius:6px; cursor:pointer; transition:.15s; font-size:11px; font-family:inherit; display:inline-flex; align-items:center; }
+    .btn-edit-tracking:hover { border-color:var(--accent); color:var(--accent); background:var(--bg-hover); }
+    .btn-edit-tracking svg { width:11px; height:11px; stroke-width:2.2; }
+    .tracking-empty { color:var(--text-muted); font-style:italic; font-size:11.5px; }
+
+    /* SO Code cell */
+    .so-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:12px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text-primary); font-size:11px; font-family:'Consolas','Monaco',monospace; font-weight:700; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:help; }
+    .so-badge.empty { color:var(--text-muted); font-family:inherit; font-weight:400; font-style:italic; background:transparent; border:none; }
+
+    /* THUMBNAILS */
+    .thumb { width:42px; height:42px; object-fit:cover; border-radius:6px; border:1px solid var(--border); cursor:pointer; }
+    .pdf-link { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; background:var(--bg-header); border:1px solid var(--border); border-radius:6px; font-size:22px; text-decoration:none; cursor:pointer; transition:.2s; }
+    .pdf-link:hover { border-color:var(--accent); background:var(--bg-hover); }
+    .read-only-note { color:var(--text-muted); font-size:12px; font-style:italic; }
+    .email-link { color:#7979ef; text-decoration:none; font-weight:600; }
+    .email-link:hover { text-decoration:underline; }
+
+    /* MODAL */
+    .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center; }
+    .modal-overlay.show { display:flex; }
+    .modal-content { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:30px 35px; width:560px; max-width:95%; max-height:90vh; overflow-y:auto; box-shadow:0 25px 50px rgba(0,0,0,0.5); }
+    .modal-content h2 { color:var(--text-primary); font-weight:300; letter-spacing:1px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px; }
+    .modal-content .form-group { margin-bottom:16px; display:flex; flex-direction:column; }
+    .modal-content .form-group label { color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+    .modal-content .form-group label .required { color:var(--accent); }
+    .modal-content .form-group input, .modal-content .form-group select, .modal-content .form-group textarea { background:var(--bg-body); color:var(--text-primary); border:1px solid var(--border); padding:10px 14px; border-radius:8px; font-size:14px; width:100%; font-family:inherit; }
+    .modal-content .form-group input:focus, .modal-content .form-group select:focus, .modal-content .form-group textarea:focus { outline:none; border-color:var(--accent); }
+    .modal-content .form-group input[type="file"] { padding:8px; }
+    .modal-info { background:var(--bg-header); border:1px solid var(--border-soft); border-radius:8px; padding:12px 16px; margin-bottom:18px; font-size:13px; line-height:1.6; color:var(--text-secondary); }
+    .modal-info b { color:var(--accent); }
+    .modal-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:20px; border-top:1px solid var(--border); padding-top:20px; }
+    .modal-actions button { padding:10px 24px; border:none; border-radius:8px; font-weight:600; cursor:pointer; transition:.2s; font-family:inherit; }
+    .modal-actions .btn-save { background:var(--accent); color:var(--accent-text); }
+    .modal-actions .btn-save:hover { background:var(--accent-hover); }
+    .modal-actions .btn-save:disabled { opacity:.5; cursor:not-allowed; }
+    .modal-actions .btn-cancel { background:var(--bg-elevated); color:var(--text-dim); }
+    .modal-actions .btn-cancel:hover { background:var(--border); color:var(--text-primary); }
+    .image-preview { margin-top:8px; }
+    .image-preview img { max-width:100%; border-radius:8px; border:1px solid var(--border); max-height:220px; }
+
+    @media (max-width:768px) {
+      .sidebar { width:70px; padding:20px 10px; }
+      .sidebar .logo, .sidebar .logo-sub, .side-btn span:not(.email-badge) { display:none; }
+      .main { padding:20px; }
+      .modal-content { padding:20px; }
+    }
+  </style>
+  <link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo-wrap">
+        <img src="img/logo.png" alt="Examedia" class="brand-logo" />
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-dept">TSD WMS</div>
+      <div class="brand-tagline">Technical Support Department</div>
+      <div class="brand-tagline">Warehouse Management System</div>
+    </div>
+
+    <div class="sidebar-nav">
+      <button class="side-btn" onclick="location.href='/dashboard.html'"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+      <button class="side-btn" onclick="location.href='/reports.html'"><i data-lucide="bar-chart-3"></i> <span>Reports</span></button>
+      <button class="side-btn" onclick="location.href='/inventory.html'"><i data-lucide="package"></i> <span>Inventory List</span></button>
+      <button class="side-btn" onclick="location.href='/assets.html'"><i data-lucide="hard-drive"></i> <span>Assets</span></button>
+      <button class="side-btn" onclick="location.href='/loans.html'"><i data-lucide="arrow-right-left"></i> <span>Loan Tracking</span></button>
+      <button class="side-btn" onclick="location.href='/requests.html'"><i data-lucide="inbox"></i> <span>Requests</span></button>
+      <button class="side-btn active" onclick="location.href='/finance.html'"><i data-lucide="shopping-cart"></i> <span>Procurement</span></button>
+      <button class="side-btn" onclick="location.href='/so-codes.html'"><i data-lucide="file-text"></i> <span>SO Codes</span></button>
+      <button class="side-btn" onclick="location.href='/audit.html'"><i data-lucide="search"></i> <span>Audit</span></button>
+      <button class="side-btn" onclick="location.href='/emails.html'"><i data-lucide="mail"></i> <span>Emails</span></button>
+      <button class="side-btn" onclick="location.href='/users.html'"><i data-lucide="users"></i> <span>Users</span></button>
+      <button class="side-btn" onclick="location.href='/settings.html'"><i data-lucide="settings"></i> <span>Settings</span></button>
+    </div>
+
+    <button class="side-btn logout-btn" onclick="logout()"><i data-lucide="log-out"></i> <span>Logout</span></button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="main-header">
+      <h1 style="font-weight: bold;">Finance &amp; Procurement</h1>
+      <div class="header-right">
+        <div id="notificationBell"></div>
+        <div class="user-badge">
+          👤 Welcome, <span id="userName">…</span>
+          <span class="role-tag" id="userRole"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-overview">
+      <div class="stat-item"><div class="stat-value" id="stat-quote">0</div><div class="stat-label">Awaiting Quotation</div></div>
+      <div class="stat-item"><div class="stat-value" id="stat-manager">0</div><div class="stat-label">Pending Manager</div></div>
+      <div class="stat-item"><div class="stat-value" id="stat-fulfil">0</div><div class="stat-label">In Fulfillment</div></div>
+      <div class="stat-item"><div class="stat-value" id="stat-confirm">0</div><div class="stat-label">Awaiting Confirmation</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="quotation">1. Quotation Entry <span class="tab-count" id="cnt-quotation">0</span></button>
+      <button class="tab-btn" data-tab="manager">2. Manager Approval <span class="tab-count" id="cnt-manager">0</span></button>
+      <button class="tab-btn" data-tab="fulfillment">3. Fulfillment Progress <span class="tab-count" id="cnt-fulfillment">0</span></button>
+      <button class="tab-btn" data-tab="confirmation">4. Awaiting User Confirmation <span class="tab-count" id="cnt-confirmation">0</span></button>
+    </div>
+
+    <!-- TAB 1: Quotation Entry -->
+    <div class="tab-content active" id="tab-quotation">
+      <div class="table-wrapper">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Requester</th>
+                <th>Client</th>
+                <th>Part</th>
+                <th>Qty</th>
+                <th>Vendor</th>
+                <th>Vendor Email</th>
+                <th>Notes</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="quotationBody"><tr class="empty-row"><td colspan="9">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Manager Approval -->
+    <div class="tab-content" id="tab-manager">
+      <div class="table-wrapper">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Requester</th><th>Part</th><th>Qty</th><th>Vendor</th><th>SO Code</th><th>Price</th><th>Quotation</th><th>Action</th></tr>
+            </thead>
+            <tbody id="managerBody"><tr class="empty-row"><td colspan="9">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Fulfillment -->
+    <div class="tab-content" id="tab-fulfillment">
+      <div class="table-wrapper">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th><th>Requester</th><th>Part</th><th>Qty</th><th>Vendor</th>
+                <th>SO Code</th><th>Amount</th><th>Tracking #</th><th>Status</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="fulfillmentBody"><tr class="empty-row"><td colspan="10">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Awaiting Confirmation -->
+    <div class="tab-content" id="tab-confirmation">
+      <div class="table-wrapper">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Requester</th><th>Part</th><th>Qty</th><th>Vendor</th><th>SO Code</th><th>Status</th><th>Note</th></tr>
+            </thead>
+            <tbody id="confirmationBody"><tr class="empty-row"><td colspan="8">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Upload Quotation -->
+  <div class="modal-overlay" id="quoteModal">
+    <div class="modal-content">
+      <h2>📄 Upload Quotation</h2>
+      <div class="modal-info" id="quoteRequestInfo"></div>
+
+      <div class="form-group">
+        <label>Vendor <span class="required">*</span></label>
+        <select id="quoteVendor"></select>
+      </div>
+
+      <div class="form-group">
+        <label>SO Code <span style="color:#7a8ba3; font-weight:400; text-transform:none;">(optional)</span></label>
+        <div class="so-combo" id="soCombo">
+          <input type="text" id="soComboInput" class="so-combo-input" placeholder="Select SO Code…" autocomplete="off" spellcheck="false" />
+          <button type="button" class="so-combo-clear" id="soComboClear" title="Clear" style="display:none;">✕</button>
+          <div class="so-combo-dropdown" id="soComboDropdown" style="display:none;">
+            <div class="so-combo-list" id="soComboList"></div>
+          </div>
+        </div>
+        <input type="hidden" id="quoteSoCodeId" value="" />
+      </div>
+
+      <div class="form-group">
+        <label>Price (RM) <span class="required">*</span></label>
+        <input type="number" id="quotePrice" step="0.01" placeholder="0.00" />
+      </div>
+      <div class="form-group">
+        <label>Delivery Estimate (Days)</label>
+        <input type="number" id="quoteDelivery" placeholder="e.g. 7" />
+      </div>
+      <div class="form-group">
+        <label>Valid Until</label>
+        <input type="date" id="quoteValid" />
+      </div>
+      <div class="form-group">
+        <label>Quotation File (Image / PDF) <span class="required">*</span></label>
+        <input type="file" id="quoteImage" accept="image/*,application/pdf" onchange="previewQuoteImage(event)" />
+        <div class="image-preview" id="quoteImagePreview"></div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="quoteNotes" placeholder="Any special conditions..."></textarea>
+      </div>
+
+      <input type="hidden" id="quoteRequestId" />
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeQuoteModal()">Cancel</button>
+        <button class="btn-save" onclick="submitQuotation()">Send to Manager</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Mark Purchased / Edit Tracking -->
+  <div class="modal-overlay" id="purchaseModal">
+    <div class="modal-content" style="width:480px;">
+      <h2 id="purchaseModalTitle">Mark as Purchased</h2>
+      <div class="modal-info" id="purchaseInfo"></div>
+      <div class="form-group">
+        <label>Tracking Number <span style="color:#7a8ba3; font-weight:400; text-transform:none;">(optional)</span></label>
+        <input type="text" id="trackingInput" placeholder="e.g. DHL1234567890" maxlength="100" autocomplete="off" />
+        <small style="color:var(--text-muted); font-size:11px; margin-top:6px;">Enter courier tracking # if available. Leave blank if not applicable.</small>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closePurchaseModal()">Cancel</button>
+        <button class="btn-save" id="purchaseSubmitBtn" onclick="submitPurchase()">✓ Mark Purchased</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Image Viewer -->
+  <div class="modal-overlay" id="imgModal" onclick="closeImgModal()">
+    <div class="modal-content" style="width:auto; max-width:90%; background:transparent; border:none; padding:0;">
+      <img id="imgModalSrc" src="" style="max-width:90vw; max-height:90vh; border-radius:12px; border:1px solid #2a3344;" />
+    </div>
+  </div>
+
+  <script src="/notifications.js"></script>
+  <script src="/logout.js"></script>
+  <script src="/escape.js"></script>
+  <script>
+    const ST = {
+      PENDING_QUOTATION:      'approved',
+      PENDING_MANAGER:        'pending_manager_approval',
+      REJECTED:               'rejected',
+      PENDING_PURCHASE:       'pending_purchase',
+      PURCHASED:              'purchased',
+      SHIPPED:                'shipped',
+      DELIVERED:              'delivered',
+      PENDING_USER_CONFIRM:   'pending_user_confirmation',
+      COMPLETED:              'completed'
+    };
+
+    let currentUser = null;
+    let vendors = [];
+    let allExternalRequests = [];
+    let purchaseTarget = null;
+
+    // SO Code combobox state
+    let soCodeOptions = [];
+    let soCodeSelectedId = null;
+    let soCodeLoaded = false;
+    let soCodeFilter = '';
+
+    function roleIs(...roles) { return currentUser && roles.includes(currentUser.role); }
+    function canUploadQuotation() { return roleIs('admin', 'finance'); }
+    function canApprove()         { return roleIs('admin', 'manager'); }
+    function canProgress()        { return roleIs('admin', 'finance'); }
+    function canEmail()           { return roleIs('admin', 'finance'); }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.user) { window.location.href = '/login.html'; return null; }
+        currentUser = data.user;
+        document.getElementById('userName').textContent = currentUser.full_name || currentUser.username;
+        document.getElementById('userRole').textContent = currentUser.role;
+        return currentUser;
+      } catch (e) { window.location.href = '/login.html'; return null; }
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+        renderAll();
+      });
+    });
+
+    async function loadVendors() {
+      try {
+        const res = await fetch('/api/vendors', { credentials: 'include' });
+        vendors = await res.json();
+      } catch (e) { console.error('Error loading vendors', e); }
+    }
+
+    async function loadExternalRequests() {
+      try {
+        const res = await fetch('/api/requests', { credentials: 'include' });
+        const data = await res.json();
+        allExternalRequests = data.filter(r => r.request_type === 'external');
+      } catch (e) {
+        console.error('Error loading requests', e);
+        allExternalRequests = [];
+      }
+    }
+
+    function isPdfUrl(url) {
+      if (!url) return false;
+      return /\.pdf($|\?)/i.test(url) || url.startsWith('data:application/pdf');
+    }
+
+    function renderThumbnail(url, alt) {
+      if (!url) return '—';
+      if (isPdfUrl(url)) {
+        return `<a href="${escapeHtml(url)}" target="_blank" class="pdf-link" title="Open PDF quotation">📄</a>`;
+      }
+      return `<img src="${escapeHtml(url)}" class="thumb" alt="${escapeAttr(alt || 'quote')}" onclick="openImgModal('${escapeAttr(url)}')" />`;
+    }
+
+    function openImgModal(src) {
+      document.getElementById('imgModalSrc').src = src;
+      document.getElementById('imgModal').classList.add('show');
+    }
+    function closeImgModal() {
+      document.getElementById('imgModal').classList.remove('show');
+    }
+
+    function buildMailto(r) {
+      if (!r.vendor_email) return '';
+      const subject = `Request for Quotation — ${r.part || 'Item'} (Qty: ${r.qty || 1})`;
+      const body =
+`Dear ${r.vendor_contact || r.vendor_name || 'Sir/Madam'},
+
+We would like to request a quotation for the following item:
+
+  Part Number : ${r.part || '—'}
+  Description : ${r.description || '—'}
+  Quantity    : ${r.qty || 1}
+  Client/Site : ${r.client || '—'}
+
+Please provide your best price, delivery estimate, and quotation validity period.
+
+Thank you,
+TSD Warehouse Management`;
+      return `mailto:${r.vendor_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    }
+
+    // SO Code cell renderer — shows badge or "—" if null
+    function soCodeCell(r) {
+      if (!r.so_number) return '<span class="so-badge empty">—</span>';
+      const full = r.so_customer ? `${r.so_number} — ${r.so_customer}` : r.so_number;
+      return `<span class="so-badge" title="${escapeAttr(full)}">${escapeHtml(r.so_number)}</span>`;
+    }
+
+    // ============ SO CODE COMBOBOX ============
+    async function loadSoCodesForCombo() {
+      if (soCodeLoaded) return;
+      try {
+        const res = await fetch('/api/so-codes?status=OPEN&limit=500', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load SO Codes');
+        const data = await res.json();
+        soCodeOptions = (data.items || []).filter(x => x.status === 'OPEN');
+        soCodeLoaded = true;
+      } catch (e) {
+        console.warn('SO Codes load failed:', e.message);
+        soCodeOptions = [];
+      }
+    }
+
+    function openSoCombo() {
+      const dd = document.getElementById('soComboDropdown');
+      dd.style.display = 'flex';
+      renderSoComboList();
+      document.getElementById('soComboInput').focus();
+    }
+
+    function closeSoCombo() {
+      const dd = document.getElementById('soComboDropdown');
+      if (dd) dd.style.display = 'none';
+    }
+
+    function renderSoComboList() {
+      const list = document.getElementById('soComboList');
+      if (!list) return;
+      const filter = soCodeFilter.toLowerCase().trim();
+      let filtered = soCodeOptions;
+      if (filter) {
+        filtered = soCodeOptions.filter(s =>
+          (s.so_number || '').toLowerCase().includes(filter) ||
+          (s.partner_customer || '').toLowerCase().includes(filter)
+        );
+      }
+
+      let html = `
+        <div class="so-combo-option none-option ${soCodeSelectedId === null ? 'selected' : ''}"
+             data-id="" onclick="selectSoCode('')">
+          — None (no SO code) —
+        </div>
+      `;
+
+      if (filtered.length === 0 && filter) {
+        html += `<div class="so-combo-empty">No SO Codes match "${escapeHtml(filter)}".</div>`;
+      } else if (soCodeOptions.length === 0) {
+        html += `<div class="so-combo-empty">No OPEN SO Codes available. Sync may not have run yet.</div>`;
+      } else {
+        html += filtered.map(s => {
+          const isSel = soCodeSelectedId === s.id;
+          return `
+            <div class="so-combo-option ${isSel ? 'selected' : ''}" data-id="${escapeAttr(s.id)}" onclick="selectSoCode('${escapeAttr(s.id)}')">
+              <span class="so-line1">${escapeHtml(s.so_number || s.id)}</span>
+              <span class="so-line2">${escapeHtml(s.partner_customer || '—')}</span>
+            </div>
+          `;
+        }).join('');
+      }
+      list.innerHTML = html;
+    }
+
+    function selectSoCode(id) {
+      soCodeSelectedId = id || null;
+      const input = document.getElementById('soComboInput');
+      const clearBtn = document.getElementById('soComboClear');
+      const hidden = document.getElementById('quoteSoCodeId');
+
+      if (!id) {
+        input.value = '';
+        input.placeholder = 'Select SO Code…';
+        clearBtn.style.display = 'none';
+        hidden.value = '';
+      } else {
+        const s = soCodeOptions.find(x => x.id === id);
+        if (s) {
+          input.value = `${s.so_number || s.id} — ${s.partner_customer || '—'}`;
+          clearBtn.style.display = 'block';
+          hidden.value = s.id;
+        }
+      }
+      soCodeFilter = '';
+      closeSoCombo();
+    }
+
+    function clearSoCode() {
+      soCodeSelectedId = null;
+      soCodeFilter = '';
+      const input = document.getElementById('soComboInput');
+      if (!input) return;
+      input.value = '';
+      input.placeholder = 'Select SO Code…';
+      document.getElementById('soComboClear').style.display = 'none';
+      document.getElementById('quoteSoCodeId').value = '';
+    }
+
+    function onSoComboFocus() {
+      soCodeFilter = '';
+      openSoCombo();
+    }
+
+    function onSoComboInput(e) {
+      soCodeFilter = e.target.value;
+      if (soCodeSelectedId) {
+        const s = soCodeOptions.find(x => x.id === soCodeSelectedId);
+        if (s && e.target.value !== `${s.so_number || s.id} — ${s.partner_customer || '—'}`) {
+          soCodeSelectedId = null;
+          document.getElementById('quoteSoCodeId').value = '';
+          document.getElementById('soComboClear').style.display = 'none';
+        }
+      }
+      openSoCombo();
+      renderSoComboList();
+    }
+
+    function onSoComboKeydown(e) {
+      if (e.key === 'Escape') {
+        closeSoCombo();
+        e.target.blur();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const options = document.querySelectorAll('#soComboList .so-combo-option');
+        if (options.length > 0) options[0].click();
+      }
+    }
+
+    function setupSoComboEvents() {
+      const input = document.getElementById('soComboInput');
+      if (!input) return;
+      input.addEventListener('focus', onSoComboFocus);
+      input.addEventListener('input', onSoComboInput);
+      input.addEventListener('keydown', onSoComboKeydown);
+
+      document.getElementById('soComboClear').addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearSoCode();
+      });
+
+      document.addEventListener('click', (e) => {
+        const combo = document.getElementById('soCombo');
+        if (combo && !combo.contains(e.target)) closeSoCombo();
+      });
+    }
+
+    // ============ RENDER EVERYTHING ============
+    function renderAll() {
+      const q = allExternalRequests.filter(r => r.status === ST.PENDING_QUOTATION);
+      const m = allExternalRequests.filter(r => r.status === ST.PENDING_MANAGER);
+      const f = allExternalRequests.filter(r => [ST.PENDING_PURCHASE, ST.PURCHASED].includes(r.status));
+      const c = allExternalRequests.filter(r => r.status === ST.DELIVERED);
+
+      document.getElementById('cnt-quotation').textContent = q.length;
+      document.getElementById('cnt-manager').textContent = m.length;
+      document.getElementById('cnt-fulfillment').textContent = f.length;
+      document.getElementById('cnt-confirmation').textContent = c.length;
+      document.getElementById('stat-quote').textContent = q.length;
+      document.getElementById('stat-manager').textContent = m.length;
+      document.getElementById('stat-fulfil').textContent = f.length;
+      document.getElementById('stat-confirm').textContent = c.length;
+
+      /* TAB 1: Quotation Entry */
+      const qb = document.getElementById('quotationBody');
+      if (q.length === 0) {
+        qb.innerHTML = '<tr class="empty-row"><td colspan="9">No approved external requests waiting for quotation.</td></tr>';
+      } else {
+        qb.innerHTML = q.map(r => {
+          let action;
+          if (canUploadQuotation()) {
+            action = `<div class="quote-actions">
+              <button class="btn-primary" onclick="openQuoteModal(${r.request_id})">Quotation</button>
+              <button class="btn-email" onclick="openEmailPage(${r.request_id})" title="Open email thread">Email</button>
+            </div>`;
+          } else {
+            action = `<span class="read-only-note">Waiting for Finance</span>`;
+          }
+
+          const emailCell = r.vendor_email
+            ? `<a href="${escapeAttr(buildMailto(r))}" class="email-link" title="Click to email">${escapeHtml(r.vendor_email)}</a>`
+            : `<span style="color:#4a5a72;">—</span>`;
+
+          return `
+            <tr>
+              <td>#${r.request_id}</td>
+              <td>${escapeHtml(r.requester_name || r.username || '—')}</td>
+              <td>${escapeHtml(r.client || '—')}</td>
+              <td>${escapeHtml(r.part || '—')}</td>
+              <td>${escapeHtml(r.qty ?? '—')}</td>
+              <td>${escapeHtml(r.vendor_name || '—')}</td>
+              <td>${emailCell}</td>
+              <td>${escapeHtml(r.justification ? r.justification.substring(0,40) + (r.justification.length>40?'…':'') : '—')}</td>
+              <td>${action}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      /* TAB 2: Manager Approval */
+      const mb = document.getElementById('managerBody');
+      if (m.length === 0) {
+        mb.innerHTML = '<tr class="empty-row"><td colspan="9">Nothing waiting for manager approval.</td></tr>';
+      } else {
+        mb.innerHTML = m.map(r => {
+          const action = canApprove()
+            ? `<button class="btn-success" onclick="managerDecision(${r.request_id}, 'approve')">✔ Approve</button>
+               <button class="btn-danger" style="margin-left:5px" onclick="managerDecision(${r.request_id}, 'reject')">✖ Reject</button>`
+            : `<span class="read-only-note">Waiting for Manager</span>`;
+          return `
+            <tr>
+              <td>#${r.request_id}</td>
+              <td>${escapeHtml(r.requester_name || '—')}</td>
+              <td>${escapeHtml(r.part || '—')}</td>
+              <td>${escapeHtml(r.qty ?? '—')}</td>
+              <td>${escapeHtml(r.vendor_name || '—')}</td>
+              <td>${soCodeCell(r)}</td>
+              <td>${r.price ? 'RM ' + parseFloat(r.price).toFixed(2) : '—'}</td>
+              <td>${renderThumbnail(r.quotation_image_url || r.quotation_image, 'quotation')}</td>
+              <td>${action}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      /* TAB 3: Fulfillment */
+      const fb = document.getElementById('fulfillmentBody');
+      if (f.length === 0) {
+        fb.innerHTML = '<tr class="empty-row"><td colspan="10">Nothing in fulfillment right now.</td></tr>';
+      } else {
+        fb.innerHTML = f.map(r => {
+          const hasTracking = !!(r.tracking_number && String(r.tracking_number).trim());
+          const trackingCell = `
+            <div class="tracking-cell">
+              ${hasTracking
+                ? `<span class="tracking-badge" title="${escapeAttr(r.tracking_number)}">
+                     <i data-lucide="package"></i>${escapeHtml(r.tracking_number)}
+                   </span>`
+                : `<span class="tracking-empty">—</span>`}
+              ${canProgress() && hasTracking
+                ? `<button class="btn-edit-tracking" onclick="openTrackingEdit(${r.request_id})" title="Edit tracking number">
+                     <i data-lucide="pencil"></i>
+                   </button>`
+                : ''}
+            </div>`;
+
+          let action;
+          if (!canProgress()) {
+            action = `<span class="read-only-note">Waiting for Finance</span>`;
+          } else if (r.status === ST.PENDING_PURCHASE) {
+            action = `<button class="btn-success" onclick="openPurchaseModal(${r.request_id})">Mark Purchased</button>`;
+          } else if (r.status === ST.PURCHASED) {
+            action = `<button class="btn-success" onclick="updateProgress(${r.request_id}, '${ST.DELIVERED}')">✓ Mark Delivered</button>`;
+          } else {
+            action = `<span style="color:#7a8ba3;">—</span>`;
+          }
+
+          return `
+            <tr>
+              <td>#${r.request_id}</td>
+              <td>${escapeHtml(r.requester_name || '—')}</td>
+              <td>${escapeHtml(r.part || '—')}</td>
+              <td>${escapeHtml(r.qty ?? '—')}</td>
+              <td>${escapeHtml(r.vendor_name || '—')}</td>
+              <td>${soCodeCell(r)}</td>
+              <td>${r.price ? 'RM ' + parseFloat(r.price).toFixed(2) : '—'}</td>
+              <td>${trackingCell}</td>
+              <td><span class="status-badge ${escapeAttr(r.status)}">${escapeHtml(r.status.replace(/_/g,' '))}</span></td>
+              <td>${action}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      /* TAB 4: Awaiting Confirmation */
+      const cb = document.getElementById('confirmationBody');
+      if (c.length === 0) {
+        cb.innerHTML = '<tr class="empty-row"><td colspan="8">No requests awaiting user confirmation.</td></tr>';
+      } else {
+        cb.innerHTML = c.map(r => `
+          <tr>
+            <td>#${r.request_id}</td>
+            <td>${escapeHtml(r.requester_name || '—')}</td>
+            <td>${escapeHtml(r.part || '—')}</td>
+            <td>${escapeHtml(r.qty ?? '—')}</td>
+            <td>${escapeHtml(r.vendor_name || '—')}</td>
+            <td>${soCodeCell(r)}</td>
+            <td><span class="status-badge ${escapeAttr(r.status)}">Awaiting user confirmation</span></td>
+            <td style="color:#7a8ba3; font-size:12px;">User must confirm pickup on their Requests page.</td>
+          </tr>
+        `).join('');
+      }
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // ============ TAB 1 ACTIONS ============
+    async function openQuoteModal(requestId) {
+      if (!canUploadQuotation()) { alert('Only Finance/Admin can upload quotations.'); return; }
+      const req = allExternalRequests.find(r => r.request_id === requestId);
+      if (!req) return;
+
+      document.getElementById('quoteRequestInfo').innerHTML = `
+        <b>Request #${req.request_id}</b> — ${escapeHtml(req.part || '—')} (Qty: ${escapeHtml(req.qty ?? '—')})<br/>
+        Requester: ${escapeHtml(req.requester_name || '—')} &nbsp;|&nbsp; Client: ${escapeHtml(req.client || '—')}<br/>
+        Requested Vendor: <b>${escapeHtml(req.vendor_name || '(none specified)')}</b><br/>
+        ${req.justification ? 'Justification: ' + escapeHtml(req.justification) : ''}
+      `;
+
+      document.getElementById('quoteRequestId').value = requestId;
+
+      const select = document.getElementById('quoteVendor');
+      select.innerHTML = '<option value="">Select Vendor</option>';
+      vendors.forEach(v => {
+        const selected = String(v.vendor_id) === String(req.vendor_id) ? 'selected' : '';
+        select.innerHTML += `<option value="${v.vendor_id}" ${selected}>${escapeHtml(v.name)}</option>`;
+      });
+      if (req.vendor_id && !vendors.some(v => String(v.vendor_id) === String(req.vendor_id))) {
+        select.innerHTML += `<option value="${req.vendor_id}" selected>${escapeHtml(req.vendor_name || 'Unknown Vendor')}</option>`;
+      }
+
+      clearSoCode();
+      closeSoCombo();
+      await loadSoCodesForCombo();
+      if (req.so_code_id) {
+        const exists = soCodeOptions.find(s => s.id === req.so_code_id);
+        if (exists) selectSoCode(req.so_code_id);
+      }
+
+      document.getElementById('quotePrice').value = '';
+      document.getElementById('quoteDelivery').value = '';
+      document.getElementById('quoteValid').value = '';
+      document.getElementById('quoteNotes').value = '';
+      document.getElementById('quoteImage').value = '';
+      document.getElementById('quoteImagePreview').innerHTML = '';
+
+      document.getElementById('quoteModal').classList.add('show');
+    }
+
+    function closeQuoteModal() {
+      document.getElementById('quoteModal').classList.remove('show');
+      closeSoCombo();
+    }
+
+    function previewQuoteImage(event) {
+      const file = event.target.files[0];
+      const prev = document.getElementById('quoteImagePreview');
+      prev.innerHTML = '';
+      if (!file) return;
+
+      if (file.type === 'application/pdf') {
+        const url = URL.createObjectURL(file);
+        prev.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; background:#111820; border:1px solid #252f3f; border-radius:8px;">
+            <span style="font-size:28px;">📄</span>
+            <div>
+              <div style="color:#e2e8f0; font-size:13px; font-weight:600;">${escapeHtml(file.name)}</div>
+              <div style="color:#7a8ba3; font-size:11px;">${(file.size / 1024).toFixed(1)} KB — PDF</div>
+              <a href="${url}" target="_blank" style="color:#f0b90b; font-size:12px; text-decoration:none;">Preview PDF ↗</a>
+            </div>
+          </div>
+        `;
+      } else {
+        const url = URL.createObjectURL(file);
+        prev.innerHTML = `<img src="${url}" alt="preview" />`;
+      }
+    }
+
+    async function submitQuotation() {
+      if (!canUploadQuotation()) { alert('Only Finance/Admin can upload quotations.'); return; }
+
+      const request_id = document.getElementById('quoteRequestId').value;
+      const vendor_id = document.getElementById('quoteVendor').value;
+      const price = document.getElementById('quotePrice').value;
+      const delivery_estimate_days = document.getElementById('quoteDelivery').value;
+      const valid_until = document.getElementById('quoteValid').value;
+      const notes = document.getElementById('quoteNotes').value;
+      const imageFile = document.getElementById('quoteImage').files[0];
+      const so_code_id = document.getElementById('quoteSoCodeId').value || '';
+
+      if (!vendor_id || !price) { alert('Vendor and Price are required.'); return; }
+      if (!imageFile) { alert('Please attach a quotation image or PDF.'); return; }
+
+      const fd = new FormData();
+      fd.append('request_id', request_id);
+      fd.append('vendor_id', vendor_id);
+      fd.append('price', price);
+      fd.append('delivery_estimate_days', delivery_estimate_days || '');
+      fd.append('valid_until', valid_until || '');
+      fd.append('notes', notes || '');
+      fd.append('so_code_id', so_code_id);
+      fd.append('quotation_image', imageFile);
+
+      try {
+        const res = await fetch('/api/quotations', { method: 'POST', credentials: 'include', body: fd });
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try { const j = await res.json(); if (j.error) msg = j.error; } catch(_) {}
+          throw new Error(msg);
+        }
+        alert('✅ Quotation sent to Manager for approval.');
+        closeQuoteModal();
+        soCodeLoaded = false;
+        await refresh();
+      } catch (e) { alert('❌ ' + e.message); }
+    }
+
+    // ============ TAB 2 ACTIONS ============
+    async function managerDecision(requestId, decision) {
+      if (!canApprove()) { alert('Only Manager/Admin can approve or reject quotations.'); return; }
+      const verb = decision === 'approve' ? 'APPROVE' : 'REJECT';
+      const reason = decision === 'reject' ? (prompt('Reason for rejection (optional):') || '') : '';
+      if (!confirm(`Are you sure you want to ${verb} request #${requestId}?`)) return;
+
+      try {
+        const res = await fetch(`/api/requests/${requestId}/manager-decision`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ decision, reason })
+        });
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try { const j = await res.json(); if (j.error) msg = j.error; } catch(_) {}
+          throw new Error(msg);
+        }
+        alert(`✅ Request #${requestId} ${decision === 'approve' ? 'approved' : 'rejected'}.`);
+        await refresh();
+      } catch (e) { alert('❌ ' + e.message); }
+    }
+
+    // ============ TAB 3 ACTIONS ============
+    async function updateProgress(requestId, newStatus) {
+      if (!canProgress()) { alert('Only Finance/Admin can update fulfillment progress.'); return; }
+      if (!confirm(`Update request #${requestId} to "${newStatus.replace(/_/g,' ')}"?`)) return;
+      try {
+        const res = await fetch(`/api/requests/${requestId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try { const j = await res.json(); if (j.error) msg = j.error; } catch(_) {}
+          throw new Error(msg);
+        }
+        alert('✅ Status updated.');
+        await refresh();
+      } catch (e) { alert('❌ ' + e.message); }
+    }
+
+    function openPurchaseModal(requestId) {
+      if (!canProgress()) { alert('Only Finance/Admin can mark as purchased.'); return; }
+      const r = allExternalRequests.find(x => x.request_id === requestId);
+      if (!r) return;
+
+      purchaseTarget = { id: requestId, mode: 'purchase', currentStatus: r.status };
+      document.getElementById('purchaseModalTitle').textContent = 'Mark as Purchased';
+      document.getElementById('purchaseInfo').innerHTML = `
+        <b>Request #${r.request_id}</b> — ${escapeHtml(r.part || '—')} × ${escapeHtml(r.qty ?? '—')}<br/>
+        Vendor: <b>${escapeHtml(r.vendor_name || '—')}</b><br/>
+        Amount: <b>${r.price ? 'RM ' + parseFloat(r.price).toFixed(2) : '—'}</b>
+      `;
+      document.getElementById('trackingInput').value = r.tracking_number || '';
+      document.getElementById('purchaseSubmitBtn').textContent = '✓ Mark Purchased';
+      document.getElementById('purchaseModal').classList.add('show');
+      setTimeout(() => document.getElementById('trackingInput').focus(), 100);
+    }
+
+    function openTrackingEdit(requestId) {
+      if (!canProgress()) { alert('Only Finance/Admin can update tracking.'); return; }
+      const r = allExternalRequests.find(x => x.request_id === requestId);
+      if (!r) return;
+
+      purchaseTarget = { id: requestId, mode: 'edit', currentStatus: r.status };
+      document.getElementById('purchaseModalTitle').textContent = '✏️ Update Tracking Number';
+      document.getElementById('purchaseInfo').innerHTML = `
+        <b>Request #${r.request_id}</b> — ${escapeHtml(r.part || '—')}<br/>
+        Vendor: <b>${escapeHtml(r.vendor_name || '—')}</b><br/>
+        Status: <b>${escapeHtml((r.status || '').replace(/_/g, ' '))}</b>
+      `;
+      document.getElementById('trackingInput').value = r.tracking_number || '';
+      document.getElementById('purchaseSubmitBtn').textContent = '✓ Save Tracking';
+      document.getElementById('purchaseModal').classList.add('show');
+      setTimeout(() => document.getElementById('trackingInput').focus(), 100);
+    }
+
+    function closePurchaseModal() {
+      document.getElementById('purchaseModal').classList.remove('show');
+      purchaseTarget = null;
+    }
+
+    async function submitPurchase() {
+      if (!purchaseTarget) return;
+      const tracking = document.getElementById('trackingInput').value.trim();
+      const btn = document.getElementById('purchaseSubmitBtn');
+      btn.disabled = true;
+      const orig = btn.textContent;
+      btn.textContent = '⏳ Saving…';
+
+      try {
+        const body = {
+          status: purchaseTarget.mode === 'purchase' ? ST.PURCHASED : purchaseTarget.currentStatus,
+          tracking_number: tracking || null
+        };
+        const res = await fetch(`/api/requests/${purchaseTarget.id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try { const j = await res.json(); if (j.error) msg = j.error; } catch(_) {}
+          throw new Error(msg);
+        }
+        const wasPurchase = purchaseTarget.mode === 'purchase';
+        const savedId = purchaseTarget.id;
+        closePurchaseModal();
+        alert(wasPurchase ? `✅ Request #${savedId} marked as purchased.` : `✅ Tracking updated.`);
+        await refresh();
+      } catch (e) {
+        alert('❌ ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+      }
+    }
+
+    function openEmailPage(requestId) {
+      if (!requestId) return;
+      if (!canEmail()) { alert('🔒 Only Finance and Admin can access the Emails page.'); return; }
+      window.location.href = `/emails.html?request_id=${requestId}`;
+    }
+
+    async function refresh() {
+      await loadExternalRequests();
+      renderAll();
+    }
+
+    document.addEventListener('DOMContentLoaded', async function () {
+      await checkAuth();
+      if (currentUser) {
+        await loadVendors();
+        setupSoComboEvents();
+        await refresh();
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+  </script>
+  <script>
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  </script>
+</body>
+</html>

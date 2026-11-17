@@ -1,0 +1,209 @@
+/* =========================================================
+   TSD WMS — Mobile Overrides
+   Loaded AFTER all inline styles. Applies below 768px.
+   Works with the Lucide-based sidebar (SVG icons + text spans).
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  html, body { overflow-x: hidden; width: 100%; }
+
+  /* ---------- SIDEBAR → icon-only rail ---------- */
+  .sidebar {
+    width: 64px !important;
+    min-width: 64px !important;
+    flex-shrink: 0;
+    padding: 16px 6px !important;
+  }
+
+  /* Hide logo text */
+   .sidebar-brand { display: none; }
+
+  /* Center the buttons, hide their text labels */
+  .sidebar .side-btn {
+    font-size: 0 !important;
+    padding: 12px 0 !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    text-align: center;
+    position: relative;
+  }
+
+  /* Hide the <span> (text label) */
+  .sidebar .side-btn span:not(.email-badge) {
+    display: none !important;
+  }
+
+  /* Show the Lucide SVG icon bigger */
+  .sidebar .side-btn svg {
+    width: 22px !important;
+    height: 22px !important;
+    display: block !important;
+  }
+
+  /* Keep the email badge positioned correctly */
+  .sidebar .side-btn .email-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 9px !important;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    margin: 0;
+    display: inline-flex !important;
+  }
+
+  .sidebar .logout-btn { padding: 12px 0 !important; }
+
+  .sidebar-toggle { display: none !important; }
+
+  /* ---------- MAIN ---------- */
+  .main { padding: 14px 12px 20px !important; min-width: 0; }
+
+  /* ---------- HEADER ---------- */
+  .main-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .main-header h1 { font-size: 20px !important; letter-spacing: 0.5px; }
+
+  .main-header .header-right {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .main-header .user-badge {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: calc(100% - 50px);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .main-header .user-badge #userName {
+    display: inline-block;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+  .main-header .user-badge .role-tag {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+  }
+
+  /* ---------- BELL ---------- */
+  .bell-btn {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 16px !important;
+    flex-shrink: 0;
+  }
+  .bell-dropdown {
+    width: calc(100vw - 20px) !important;
+    right: -8px !important;
+    max-width: none !important;
+  }
+
+  /* ---------- STATS ---------- */
+  .stats-overview { gap: 10px; }
+  .stats-overview .stat-item {
+    flex: 1 1 calc(50% - 5px) !important;
+    min-width: 0 !important;
+    padding: 10px 12px !important;
+  }
+  .stat-item .stat-value { font-size: 22px !important; }
+  .stat-item .stat-label { font-size: 10px !important; }
+
+  /* ---------- CHARTS ---------- */
+  .charts-overview {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+  .chart-card { padding: 14px 16px !important; min-height: 280px; }
+
+  /* ---------- SETTINGS ---------- */
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+
+  .settings-menu {
+    display: flex;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 6px;
+    padding: 10px;
+    position: static !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .settings-menu::-webkit-scrollbar { display: none; }
+  .settings-menu-btn {
+    width: auto !important;
+    flex-shrink: 0;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    white-space: nowrap;
+    margin-bottom: 0 !important;
+  }
+
+  .settings-panel { padding: 20px 16px !important; }
+
+  /* ---------- TABLES ---------- */
+  .table-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .search-box {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .search-box input,
+  .search-box button { width: 100%; min-width: 0; }
+
+  .table-wrapper { overflow: hidden; }
+  .table-scroll { overflow-x: auto; }
+
+  /* ---------- MODALS ---------- */
+  .modal-content {
+    padding: 22px 18px !important;
+    width: 94% !important;
+    max-width: 94% !important;
+    border-radius: 14px;
+  }
+  .modal-content h2 { font-size: 17px !important; }
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .modal-actions button { width: 100%; padding: 12px !important; }
+
+  /* ---------- TABS ---------- */
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    white-space: nowrap;
+  }
+}

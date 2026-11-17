@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ---------- COLOR TOKENS & DESIGN SYSTEM ---------- */
+    :root {
+      /* Professional Corporate Red */
+      --red-primary:  #c81e1e;
+      --red-hover:    #9b1c1c;
+      --red-active:   #771d1d;
+      --red-focus:    rgba(200, 30, 30, 0.15);
+      --red-soft-bg:  #fdf2f2;
+      --red-border:   #fde8e8;
+
+      /* Page & Panel Colors */
+      --bg-body:      #f3f4f6;
+      --card-bg:      #ffffff;
+      
+      /* Typography Colors */
+      --ink:          #111827;
+      --ink-soft:     #4b5563;
+      --ink-faint:    #9ca3af;
+      
+      /* Form Control States */
+      --border-color: #d1d5db;
+      --field-bg:     #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      background-color: var(--bg-body);
+    }
+
+    /* ---------- CARD SHELL ---------- */
+    .login-shell {
+      display: flex;
+      width: 100%;
+      max-width: 960px;
+      min-height: 560px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      border: 1px solid #e5e7eb;
+    }
+
+    /* =========================================================
+       LEFT PANEL — Professional Red Geometric Panel
+       ========================================================= */
+    .panel-left {
+      flex: 1 1 42%;
+      background: linear-gradient(145deg, #9b1c1c 0%, #c81e1e 100%);
+      padding: 56px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      color: #ffffff;
+      overflow: hidden;
+    }
+
+    /* Subtle geometric grid background overlay */
+    .panel-left::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+    }
+
+    .panel-left .brand-header {
+      position: relative;
+      z-index: 2;
+    }
+
+    .panel-left .brand-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .panel-left .brand-subtitle {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.85);
+      font-weight: 400;
+    }
+
+    .panel-left .brand-footer {
+      position: relative;
+      z-index: 2;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.5;
+    }
+
+    /* =========================================================
+       RIGHT PANEL — Form Section
+       ========================================================= */
+    .panel-right {
+      flex: 1 1 58%;
+      padding: 56px 64px;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      justify-content: center;
+    }
+
+    .panel-right h2 {
+      color: var(--ink);
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      margin-bottom: 6px;
+    }
+
+    .panel-right .form-sub {
+      color: var(--ink-soft);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    /* ---------- FORM FIELDS ---------- */
+    .field {
+      margin-bottom: 20px;
+    }
+    
+    .input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 13px 16px; 
+      background: var(--field-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 400;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .field input::placeholder { 
+      color: var(--ink-faint); 
+    }
+
+    .field input:focus {
+      border-color: var(--red-primary);
+      box-shadow: 0 0 0 3px var(--red-focus);
+    }
+
+    /* ---------- OPTIONS ROW ---------- */
+    .options-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      font-size: 14px;
+    }
+
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink-soft);
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .remember-me input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--red-primary);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    /* ---------- PRIMARY BUTTON ---------- */
+    .btn-login {
+      width: 100%;
+      padding: 13px;
+      background: var(--red-primary);
+      border: none;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-login:hover {
+      background: var(--red-hover);
+    }
+
+    .btn-login:active { 
+      background: var(--red-active);
+    }
+
+    /* ---------- ERROR MESSAGE ---------- */
+    .error-msg {
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 6px;
+      display: none;
+      color: var(--red-hover);
+      background: var(--red-soft-bg);
+      border: 1px solid var(--red-border);
+      line-height: 1.4;
+    }
+
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width: 800px) {
+      body { 
+        padding: 0; 
+        background: #ffffff; 
+      }
+      .login-shell {
+        flex-direction: column;
+        min-height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+        border: none;
+        max-width: 100%;
+      }
+      .panel-left {
+        flex: 0 0 auto;
+        padding: 40px 24px;
+      }
+      .panel-right { 
+        padding: 36px 24px; 
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-shell">
+
+    <!-- ================= LEFT PANEL — Clean Professional Accent ================= -->
+    <aside class="panel-left">
+      <div class="brand-header">
+        <h1 class="brand-title">TSD WMS</h1>
+        <p class="brand-subtitle">Warehouse Management System</p>
+      </div>
+      <div class="brand-footer">
+        <p>Enterprise Management Portal</p>
+      </div>
+    </aside>
+
+    <!-- ================= RIGHT PANEL — Form ================= -->
+    <section class="panel-right">
+      
+      <h2>Welcome back</h2>
+      <p class="form-sub">Please enter your credentials to access your account.</p>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        
+        <!-- Username / Email -->
+        <div class="field">
+          <div class="input-group">
+            <input type="text" id="username" placeholder="Email or Username" required autofocus />
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="field">
+          <div class="input-group">
+            <input type="password" id="password" placeholder="Password" required />
+          </div>
+        </div>
+
+        <!-- Options Row -->
+        <div class="options-row">
+          <label class="remember-me">
+            <input type="checkbox" id="remember" /> Remember me
+          </label>
+        </div>
+
+        <button type="submit" class="btn-login">Sign in</button>
+        <div id="errorMsg" class="error-msg"></div>
+      </form>
+
+    </section>
+
+  </div>
+
+  <script>
+    async function handleLogin(event) {
+      event.preventDefault();
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const errorDiv = document.getElementById('errorMsg');
+
+      errorDiv.style.display = 'none';
+
+      if (!username || !password) {
+        errorDiv.textContent = 'Please enter both username and password.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          errorDiv.textContent = data.error || 'Login failed.';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        window.location.href = '/dashboard.html';
+      } catch (error) {
+        errorDiv.textContent = 'Network error. Please check your connection.';
+        errorDiv.style.display = 'block';
+        console.error('Login error:', error);
+      }
+    }
+
+    // If already logged in, go to dashboard
+    async function checkAlreadyLoggedIn() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (data.user) {
+          window.location.href = '/dashboard.html';
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
+    checkAlreadyLoggedIn();
+  </script>
+
+</body>
+</html>

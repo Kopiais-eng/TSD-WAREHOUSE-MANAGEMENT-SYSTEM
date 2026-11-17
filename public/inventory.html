@@ -1,0 +1,2386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | Inventory</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="/theme.js"></script>
+  <script src="/sidebar.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-body:#0b0e14; --bg-sidebar:#141a24; --bg-main:#0f131a; --bg-card:#181f2b;
+      --bg-elevated:#1f2a3a; --bg-header:#111820; --bg-hover:#1a2332;
+      --border:#2a3344; --border-soft:#252f3f; --border-row:#1f2a3a;
+      --text-primary:#e2e8f0; --text-secondary:#cbd5e0; --text-muted:#7a8ba3; --text-dim:#a0b3cc;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    [data-theme="light"] {
+      --bg-body:#ffffff; --bg-sidebar:#ffffff; --bg-main:#f8fafc; --bg-card:#ffffff;
+      --bg-elevated:#f1f5f9; --bg-header:#f8fafc; --bg-hover:#f1f5f9;
+      --border:#e2e8f0; --border-soft:#e2e8f0; --border-row:#f1f5f9;
+      --text-primary:#0f172a; --text-secondary:#334155; --text-muted:#64748b; --text-dim:#475569;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+
+    body {
+      background:var(--bg-body); display:flex; height:100vh;
+      color:var(--text-primary); overflow:hidden;
+      transition:background .2s ease, color .2s ease;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width:240px; background:#232c36; padding:30px 20px;
+      display:flex; flex-direction:column; border-right:1px solid #333333;
+      height:100vh; position:sticky; top:0;
+      transition:width .25s ease, padding .25s ease;
+    }
+
+    .sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -8px;               /* negative so scrollbar doesn't clip buttons */
+  padding: 0 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 5px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+    .sidebar-brand {
+      text-align:center; padding-bottom:22px; margin-bottom:22px;
+      border-bottom:1px solid rgba(255,255,255,0.3); flex-shrink:0;
+    }
+    .brand-logo-wrap {
+      background:#ffffff; border-radius:12px; padding:8px; margin-bottom:14px;
+      display:inline-block; width:100%; box-sizing:border-box;
+    }
+    .brand-logo { display:block; width:100%; max-width:160px; height:auto; margin:0 auto; }
+    .brand-divider {
+      width:50px; height:2px; background:#ffffff; margin:10px auto 12px;
+      border-radius:1px; opacity:.6;
+    }
+    .brand-dept {
+      font-size:14px; font-weight:700; letter-spacing:2.5px; color:#ffffff;
+      text-transform:uppercase; margin-bottom:5px;
+    }
+    .brand-tagline {
+      font-size:9px; color:#ffffff; letter-spacing:.6px; line-height:1.5;
+      text-transform:uppercase; font-weight:500;
+    }
+    .side-btn {
+      width:100%; padding:12px 16px; background:transparent; border:none;
+      border-radius:10px; color:#ffffff; font-size:15px; font-weight:500;
+      text-align:left; display:flex; align-items:center; gap:14px;
+      cursor:pointer; transition:.2s ease; margin-bottom:4px;
+      font-family:inherit; position:relative;
+    }
+    .side-btn:hover { background:rgba(121,121,121,.4); color:#ffffff; }
+    .side-btn.active { background:#ffffff; color:#000000; font-weight:700; }
+    .side-btn.active:hover { background:#ffffff; color:#000000; }
+    .side-btn svg { width:18px; height:18px; flex-shrink:0; stroke-width:1.8; color:inherit; stroke:currentColor; }
+    .logout-btn { margin-top:auto; border-top:1px solid rgba(255,255,255,.15); padding-top:16px; color:#ffffff; }
+    .logout-btn:hover { background:rgba(220,38,38,.4); color:#ffffff; }
+    .sidebar.collapsed { width:70px; padding:30px 10px; }
+    .sidebar.collapsed .brand-dept, .sidebar.collapsed .brand-tagline, .sidebar.collapsed .brand-divider { display:none; }
+    .sidebar.collapsed .sidebar-brand { padding-bottom:16px; margin-bottom:16px; }
+    .sidebar.collapsed .brand-logo-wrap { padding:4px; border-radius:8px; margin-bottom:0; }
+    .sidebar.collapsed .brand-logo { max-width:44px; }
+
+    /* MAIN */
+    .main { flex:1; padding:30px 40px; overflow:hidden; background:var(--bg-main); display:flex; flex-direction:column; min-height:0; }
+    .main-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-shrink:0; }
+    .main-header h1 { font-size:26px; font-weight:300; letter-spacing:1px; color:var(--text-primary); }
+    .main-header .header-right { display:flex; align-items:center; gap:14px; }
+    .main-header .user-badge {
+      background:var(--bg-elevated); padding:8px 18px; border-radius:30px; font-size:14px;
+      color:var(--text-dim); border:1px solid var(--border); display:flex; align-items:center;
+      gap:6px; text-transform:uppercase;
+    }
+    .main-header .user-badge span { color:inherit; }
+    .main-header .user-badge .role-tag {
+      color:var(--text-primary); border-radius:12px; font-size:13.5px;
+      text-transform:uppercase; letter-spacing:1px; font-weight:700;
+    }
+
+    /* STATS */
+    .stats-overview { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px; flex-shrink:0; }
+    .stat-item {
+      background:var(--bg-card); border:1px solid var(--border-soft); border-radius:12px;
+      padding:10px 20px; flex:1 0 auto; min-width:100px; text-align:center;
+      transition:.2s; cursor:pointer;
+    }
+    .stat-item:hover { border-color:var(--border); background:var(--bg-elevated); }
+    .stat-item .stat-value { font-size:24px; font-weight:700; color:var(--text-primary); line-height:1.2; }
+    .stat-item .stat-label { font-size:11px; text-transform:uppercase; color:var(--text-muted); letter-spacing:1px; margin-top:2px; }
+    .stat-item.low-stock .stat-value { color:var(--accent); }
+    .stat-item.low-stock { border-color:#4a2a2a; }
+    .stat-item.low-stock:hover { border-color:var(--accent); }
+    .stat-item.active-filter { border-color:var(--accent); background:var(--bg-elevated); }
+
+    /* WORKSPACE */
+    .workspace { display:flex; gap:16px; flex:1; min-height:0; }
+    .inventory-pane { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; }
+
+    /* ⭐ SO CODE COMBOBOX */
+.so-combo { position:relative; }
+.so-combo-input {
+  background:var(--bg-body) !important; color:var(--text-primary) !important;
+  border:1px solid var(--border) !important; padding:10px 40px 10px 14px !important;
+  border-radius:8px !important; font-size:14px !important; width:100% !important;
+  cursor:pointer;
+}
+.so-combo-input:focus { outline:none; border-color:var(--accent) !important; }
+.so-combo-input::placeholder { color:var(--text-muted); }
+.so-combo-clear {
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  background:transparent; border:none; color:var(--text-muted);
+  cursor:pointer; font-size:14px; padding:4px 6px; border-radius:4px;
+  transition:.15s; line-height:1;
+}
+.so-combo-clear:hover { background:var(--bg-elevated); color:var(--accent); }
+.so-combo-dropdown {
+  position:absolute; top:calc(100% + 4px); left:0; right:0;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,.4);
+  max-height:320px; overflow:hidden; z-index:100;
+  display:flex; flex-direction:column;
+}
+.so-combo-list { overflow-y:auto; max-height:280px; }
+.so-combo-list::-webkit-scrollbar { width:6px; }
+.so-combo-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.so-combo-option {
+  padding:10px 14px; cursor:pointer; font-size:13px;
+  color:var(--text-secondary); border-bottom:1px solid var(--border-row);
+  display:flex; flex-direction:column; gap:2px; transition:background .12s;
+}
+.so-combo-option:last-child { border-bottom:none; }
+.so-combo-option:hover { background:var(--bg-hover); }
+.so-combo-option.selected { background:var(--bg-elevated); color:var(--accent); font-weight:700; }
+.so-combo-option.none-option {
+  color:var(--text-muted); font-style:italic;
+  background:var(--bg-header); border-bottom:1px solid var(--border);
+  font-weight:600; font-size:12.5px;
+}
+.so-combo-option.none-option:hover { background:var(--bg-elevated); color:var(--text-primary); }
+.so-combo-option .so-line1 { color:var(--text-primary); font-weight:600; font-size:13px; }
+.so-combo-option .so-line2 { color:var(--text-muted); font-size:11px; }
+.so-combo-empty { padding:20px 14px; text-align:center; color:var(--text-muted); font-style:italic; font-size:12.5px; }
+
+/* ⭐ SO Code badge in table */
+.so-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 10px; border-radius:12px;
+  background:var(--bg-elevated); border:1px solid var(--border);
+  color:var(--text-primary); font-size:11px;
+  font-family:'Consolas','Monaco',monospace; font-weight:700;
+  max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  cursor:help;
+}
+.so-badge.empty { color:var(--text-muted); font-family:inherit; font-weight:400; font-style:italic; background:transparent; border:none; }
+
+    /* TABLE CONTROLS */
+        /* TABLE CONTROLS */
+    .table-controls { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 16px; 
+      flex-wrap: wrap; 
+      gap: 12px; 
+      flex-shrink: 0; 
+    }
+    
+    .table-controls .entries { 
+      display: flex; 
+      align-items: center; 
+      gap: 14px; 
+      flex-wrap: wrap;
+      color: var(--text-muted); 
+      font-size: 14px; 
+    }
+    
+    .table-controls .entries select { 
+      background: var(--bg-elevated); 
+      color: var(--text-primary); 
+      border: 1px solid var(--border); 
+      padding: 6px 12px; 
+      border-radius: 6px; 
+      font-size: 14px; 
+      cursor: pointer; 
+    }
+    
+    .archive-toggle {
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+      color: var(--text-muted); 
+      font-size: 12px;
+      text-transform: uppercase; 
+      letter-spacing: .5px; 
+      font-weight: 600; 
+      cursor: pointer; 
+      user-select: none;
+    }
+    .archive-toggle input { accent-color: var(--accent); cursor: pointer; }
+
+    /* Right side of controls */
+    .table-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      flex: 1;
+    }
+
+    /* Search Group */
+    .search-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: 1;
+      max-width: 320px;
+      min-width: 200px;
+    }
+
+    .search-group input {
+      background: var(--bg-elevated); 
+      color: var(--text-primary); 
+      border: 1px solid var(--border);
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      font-size: 13px; 
+      width: 100%;
+    }
+    .search-group input:focus { outline: none; border-color: var(--accent); }
+    
+    .search-group button {
+      background: var(--accent); 
+      border: none; 
+      padding: 8px 16px; 
+      border-radius: 6px;
+      color: var(--accent-text); 
+      font-weight: 600; 
+      cursor: pointer; 
+      transition: .2s;
+      font-family: inherit; 
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .search-group button:hover { background: var(--accent-hover); }
+
+    /* Button Group */
+    .button-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    /* Unified Button Styles for the top bar */
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: inherit;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+    .btn-action svg { width: 14px; height: 14px; stroke-width: 2.2; }
+    
+    .btn-template { background: #2a4a6b; }
+    .btn-template:hover { background: #3a6a8b; }
+    
+    .btn-import { background: #8b5cf6; }
+    .btn-import:hover { background: #7c3aed; }
+    
+    .btn-export { background: #2a4a6b; }
+    .btn-export:hover { background: #3a6a8b; }
+    
+    .btn-add { background: #2a6b3a; }
+    .btn-add:hover { background: #3a8b4a; }
+
+    /* Mobile stacking */
+    @media (max-width: 900px) {
+      .table-actions { flex-direction: column; align-items: stretch; }
+      .search-group { max-width: 100%; }
+      .button-group { justify-content: space-between; width: 100%; }
+    }
+
+    /* TABLE */
+    .table-wrapper { background:var(--bg-card); border-radius:16px; border:1px solid var(--border-soft); overflow:hidden; display:flex; flex-direction:column; flex:1; min-height:0; }
+    .table-scroll { overflow:auto; flex:1; min-height:0; }
+    .table-scroll::-webkit-scrollbar { width:8px; height:8px; }
+    .table-scroll::-webkit-scrollbar-track { background:var(--bg-header); }
+    .table-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+    table { width:100%; border-collapse:collapse; font-size:13px; min-width:1100px; }
+    th {
+      text-align:left; padding:12px 14px; background:var(--bg-header); color:var(--text-muted);
+      text-transform:uppercase; font-size:11px; letter-spacing:1px;
+      border-bottom:2px solid var(--border-soft); position:sticky; top:0; z-index:10;
+      white-space:nowrap; vertical-align:middle;
+    }
+    td { padding:10px 14px; border-bottom:1px solid var(--border-row); color:var(--text-secondary); vertical-align:middle; }
+    tr:hover td { background:var(--bg-hover); }
+    tr.archived-row td { opacity:.55; }
+    tr.archived-row:hover td { opacity:1; }
+    .empty-row td { text-align:center; padding:40px 16px; color:var(--text-muted); font-style:italic; font-size:15px; letter-spacing:1px; }
+
+    .badge-qty { background:var(--bg-elevated); padding:2px 12px; border-radius:30px; font-size:13px; font-weight:600; color:var(--text-primary); display:inline-block; }
+    .badge-qty.zero { background:#4a2a2a; color:#ef6b6b; }
+
+    /* SERIALS INFO CELL */
+    .serials-cell {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 10px; border-radius:20px; background:var(--bg-elevated);
+      border:1px solid var(--border); cursor:pointer; transition:.15s;
+      font-size:12px; color:var(--text-dim); font-weight:600;
+      font-family:inherit;
+    }
+    .serials-cell:hover { border-color:var(--accent); color:var(--accent); background:var(--bg-hover); }
+    .serials-cell svg { width:14px; height:14px; stroke-width:2.2; }
+    .serials-cell .serial-count { color:var(--text-primary); }
+
+    /* ROW ACTIONS */
+    .row-actions { display:flex; gap:4px; align-items:center; }
+    .row-actions button {
+      display:flex; flex-direction:column; align-items:center; gap:1px;
+      padding:5px 8px; border:none; border-radius:6px; font-size:9px;
+      font-weight:700; cursor:pointer; transition:.2s; min-width:46px;
+      font-family:inherit; text-transform:uppercase; letter-spacing:.3px;
+      line-height:1; position:relative;
+    }
+    .row-actions button .icon { font-size:14px; line-height:1; }
+    .row-actions .btn-takeout { background:#b52f2f; color:#ffffff; }
+    .row-actions .btn-takeout:hover { background:#551a1a; }
+    .row-actions .btn-request { background:#4ca229; color:#ffffff; }
+    .row-actions .btn-request:hover { background:#30651d; }
+    .row-actions .btn-loan { background:#c3c831; color:#ffffff; }
+    .row-actions .btn-loan:hover { background:#757820; }
+    .row-actions button.queued { background:#16a34a !important; }
+    .row-actions button.queued::after {
+      content:attr(data-qty);
+      position:absolute; top:-5px; right:-5px;
+      min-width:16px; height:16px; padding:0 4px;
+      background:#16a34a; color:#fff; border-radius:8px;
+      font-size:10px; display:flex; align-items:center; justify-content:center;
+      border:2px solid var(--bg-card); font-weight:900;
+    }
+
+    /* CART PANE */
+    .cart-pane {
+      width:360px; flex-shrink:0; background:var(--bg-card);
+      border:1px solid var(--border-soft); border-radius:16px;
+      display:flex; flex-direction:column; min-height:0; overflow:hidden;
+    }
+    .cart-header {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:16px 18px; background:var(--bg-header);
+      border-bottom:1px solid var(--border-soft);
+      font-size:13px; font-weight:700; text-transform:uppercase;
+      letter-spacing:1px; color:var(--text-primary); flex-shrink:0;
+    }
+    .cart-header .cart-count-badge {
+      background:var(--accent); color:#fff; padding:2px 10px;
+      border-radius:12px; font-size:11px; font-weight:700;
+    }
+    .cart-list { flex:1; overflow-y:auto; min-height:0; }
+    .cart-list::-webkit-scrollbar { width:6px; }
+    .cart-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    .cart-empty {
+      padding:40px 20px; text-align:center; color:var(--text-muted);
+      font-size:12px; line-height:1.7; font-style:italic;
+    }
+    .cart-empty .big-icon { display:block; font-size:32px; margin-bottom:10px; opacity:.5; }
+
+    .cart-item { padding:12px 16px; border-bottom:1px solid var(--border-row); position:relative; }
+    .cart-item:last-child { border-bottom:none; }
+    .cart-item .action-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:2px 10px; border-radius:20px; font-size:9px;
+      font-weight:700; text-transform:uppercase; letter-spacing:.5px; line-height:1;
+    }
+    .cart-item .action-badge svg { width:12px; height:12px; stroke-width:2.2; flex-shrink:0; }
+    .cart-item .action-badge.takeout { background:#b52f2f; color:#ffffff; }
+    .cart-item .action-badge.request { background:#4ca229; color:#ffffff; }
+    .cart-item .action-badge.loan { background:#c3c831; color:#ffffff; }
+    .cart-item .item-name {
+      color:var(--text-primary); font-weight:600; font-size:12.5px;
+      margin-bottom:4px; padding-right:28px; word-break:break-word; line-height:1.35;
+    }
+    .cart-item .item-meta { color:var(--text-muted); font-size:10.5px; line-height:1.5; margin-bottom:8px; }
+
+    /* ⭐ Serial chips in cart */
+    .cart-serial-chips {
+      display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;
+      padding-top:8px; border-top:1px dashed var(--border-row);
+    }
+    .cart-serial-chips .serial-chip {
+      background:var(--bg-body); border:1px solid var(--border);
+      color:#f0b90b; font-family:'Consolas','Monaco',monospace;
+      font-size:10.5px; padding:2px 8px; border-radius:10px;
+      font-weight:700; white-space:nowrap;
+    }
+    .cart-serial-chips .serial-chip.more {
+      background:var(--bg-elevated); color:var(--text-dim); font-family:inherit;
+      font-weight:600;
+    }
+
+    .cart-item .remove-btn {
+      position:absolute; top:10px; right:10px; width:22px; height:22px;
+      border-radius:50%; border:1px solid var(--border); background:var(--bg-elevated);
+      color:#ef6b6b; font-size:12px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      padding:0; font-family:inherit; line-height:1; transition:.15s;
+    }
+    .cart-item .remove-btn:hover { background:#2a1a1a; border-color:#ef6b6b; }
+    .cart-footer {
+      padding:14px 16px; border-top:1px solid var(--border-soft);
+      display:flex; gap:8px; flex-shrink:0; background:var(--bg-header);
+    }
+    .cart-footer button {
+      padding:10px 14px; border:none; border-radius:8px;
+      font-weight:700; font-size:12.5px; cursor:pointer; transition:.2s;
+      font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px;
+    }
+    .cart-footer .btn-clear {
+      background:var(--bg-elevated); color:var(--text-dim);
+      border:1px solid var(--border); flex:0 0 auto;
+    }
+    .cart-footer .btn-clear:hover { background:var(--border); color:var(--text-primary); }
+    .cart-footer .btn-clear:disabled { opacity:.4; cursor:not-allowed; }
+    .cart-footer .btn-submit-all { background:#2a6b3a; color:#ffffff; flex:1; }
+    .cart-footer .btn-submit-all:hover { background:#3a8b4a; }
+    .cart-footer .btn-submit-all:disabled { opacity:.4; cursor:not-allowed; }
+
+    /* MODAL */
+    .modal-overlay {
+      display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,.6); backdrop-filter:blur(4px); z-index:9999;
+      justify-content:center; align-items:center;
+    }
+    .modal-overlay.show { display:flex; }
+    .modal-content {
+      background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
+      padding:30px 35px; width:550px; max-width:95%; max-height:90vh;
+      overflow-y:auto; box-shadow:0 25px 50px rgba(0,0,0,.5);
+    }
+    .modal-content.wide { width:720px; }
+    .modal-content h2 {
+      color:var(--text-primary); font-weight:300; letter-spacing:1px;
+      margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px;
+    }
+    .modal-content .form-group { margin-bottom:16px; display:flex; flex-direction:column; }
+    .modal-content .form-group label {
+      color:var(--text-muted); font-size:11px; text-transform:uppercase;
+      letter-spacing:.5px; margin-bottom:4px;
+    }
+    .modal-content .form-group label .required { color:var(--accent); }
+    .modal-content .form-group input,
+    .modal-content .form-group select,
+    .modal-content .form-group textarea {
+      background:var(--bg-body); color:var(--text-primary); border:1px solid var(--border);
+      padding:10px 14px; border-radius:8px; font-size:14px; width:100%;
+    }
+    .modal-content .form-group input:focus,
+    .modal-content .form-group select:focus { outline:none; border-color:var(--accent); }
+    .modal-actions {
+      display:flex; gap:12px; justify-content:flex-end; margin-top:20px;
+      border-top:1px solid var(--border); padding-top:20px;
+    }
+    .modal-actions button {
+      padding:10px 24px; border:none; border-radius:8px;
+      font-weight:600; cursor:pointer; transition:.2s; font-family:inherit;
+    }
+    .modal-actions .btn-save { background:var(--accent); color:var(--accent-text); }
+    .modal-actions .btn-save:hover { background:var(--accent-hover); }
+    .modal-actions .btn-save:disabled { opacity:.5; cursor:not-allowed; }
+    .modal-actions .btn-cancel { background:var(--bg-elevated); color:var(--text-dim); }
+    .modal-actions .btn-cancel:hover { background:var(--border); color:var(--text-primary); }
+    .modal-actions .btn-confirm-all { background:#2a6b3a; color:#ffffff; }
+    .modal-actions .btn-confirm-all:hover { background:#3a8b4a; }
+    .modal-actions .btn-confirm-all:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* SERIAL INPUTS (dynamic) */
+    .serial-inputs-wrap {
+      margin-top:8px; max-height:260px; overflow-y:auto; padding-right:4px;
+    }
+    .serial-inputs-wrap::-webkit-scrollbar { width:6px; }
+    .serial-inputs-wrap::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    .serial-inputs-wrap .form-group { margin-bottom:10px; }
+    .serial-inputs-wrap input { font-family:'Consolas','Monaco',monospace; letter-spacing:.3px; }
+
+    /* ⭐ SERIAL PICKER (multi-select) */
+    .serial-pick-header {
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; margin-bottom:14px; padding:10px 14px;
+      background:var(--bg-header); border:1px solid var(--border-soft);
+      border-radius:10px; flex-wrap:wrap;
+    }
+    .serial-pick-header .sph-info { color:var(--text-muted); font-size:12.5px; }
+    .serial-pick-header .sph-info b { color:var(--text-primary); }
+    .serial-pick-header .sph-count {
+      background:var(--accent); color:#fff; padding:3px 12px;
+      border-radius:20px; font-size:12px; font-weight:700;
+    }
+    .serial-pick-header .sph-count.zero { background:var(--bg-elevated); color:var(--text-muted); }
+
+    .serial-pick-list {
+      display:flex; flex-direction:column; gap:8px;
+      max-height:380px; overflow-y:auto; padding:2px;
+    }
+    .serial-pick-list::-webkit-scrollbar { width:6px; }
+    .serial-pick-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+    .serial-pick-item {
+      display:flex; align-items:center; gap:12px;
+      padding:12px 16px; border:1px solid var(--border); border-radius:10px;
+      background:var(--bg-body); cursor:pointer; transition:.15s; user-select:none;
+    }
+    .serial-pick-item:hover { border-color:var(--accent); background:var(--bg-hover); }
+    .serial-pick-item.selected { border-color:var(--accent); background:rgba(239,68,68,.08); }
+    .serial-pick-item input[type=checkbox] {
+      width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex-shrink:0;
+    }
+    .serial-pick-item .sp-serial {
+      flex:1; color:var(--text-primary); font-weight:700;
+      font-family:'Consolas','Monaco',monospace; font-size:13px;
+      word-break:break-all;
+    }
+    .serial-pick-item .sp-meta {
+      color:var(--text-muted); font-size:10.5px;
+      display:flex; flex-direction:column; text-align:right; gap:3px;
+      flex-shrink:0;
+    }
+    .serial-pick-item .sp-status {
+      padding:2px 8px; border-radius:10px; font-size:9.5px;
+      font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+    }
+    .serial-pick-item .sp-status.in_stock { background:#2a6b3a; color:#8bdd9b; }
+
+    .serial-pick-empty {
+      padding:40px 20px; text-align:center; color:var(--text-muted);
+      font-style:italic; font-size:13px;
+    }
+
+    /* SERIAL INFO TABLE */
+    .serial-info-table {
+      width:100%; border-collapse:collapse; font-size:12.5px;
+      background:var(--bg-body); border-radius:10px; overflow:hidden;
+    }
+    .serial-info-table th {
+      background:var(--bg-header); color:var(--text-muted);
+      text-transform:uppercase; font-size:10px; letter-spacing:.5px;
+      padding:10px 12px; text-align:left; border-bottom:1px solid var(--border);
+      position:static;
+    }
+    .serial-info-table td {
+      padding:10px 12px; border-bottom:1px solid var(--border-row);
+      color:var(--text-secondary); vertical-align:middle;
+    }
+    .serial-info-table td.serial-col {
+      font-family:'Consolas','Monaco',monospace; font-weight:700;
+      color:var(--text-primary); font-size:12.5px;
+    }
+    .serial-info-table tr:last-child td { border-bottom:none; }
+    .serial-info-table .status-pill {
+      padding:2px 10px; border-radius:12px; font-size:10px;
+      font-weight:700; text-transform:uppercase; letter-spacing:.4px;
+      display:inline-block;
+    }
+    .serial-info-table .status-pill.in_stock { background:#2a6b3a; color:#8bdd9b; }
+    .serial-info-table .status-pill.taken_out { background:#4a2a2a; color:#f08b8b; }
+    .serial-info-table .status-pill.loaned { background:#6b5a2a; color:#f0d06b; }
+    .serial-info-table .status-pill.reserved { background:#2a4a6b; color:#8bc1dd; }
+
+    .serials-empty {
+      padding:40px 20px; text-align:center; color:var(--text-muted);
+      font-style:italic; font-size:13px;
+    }
+
+    /* REVIEW MODAL ITEMS */
+    .review-item {
+      background:var(--bg-body); border:1px solid var(--border); border-radius:10px;
+      padding:14px 16px; margin-bottom:14px;
+    }
+    .review-item-header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+    .review-item-header .action-badge {
+      padding:3px 12px; border-radius:20px; font-size:10px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.5px;
+    }
+    .review-item-header .action-badge.takeout { background:#f97316; color:#fff; }
+    .review-item-header .action-badge.request { background:#2563eb; color:#fff; }
+    .review-item-header .action-badge.loan { background:#0d9488; color:#fff; }
+    .review-item-header .review-item-title { color:var(--text-primary); font-weight:600; font-size:13.5px; }
+    .review-item-meta { color:var(--text-muted); font-size:11.5px; margin-bottom:10px; }
+
+    /* ⭐ Serial chips in review */
+    .review-item-serials {
+      display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;
+      padding:10px; background:var(--bg-header); border-radius:8px;
+    }
+    .review-item-serials .rl-label {
+      color:var(--text-muted); font-size:10.5px; text-transform:uppercase;
+      letter-spacing:.5px; font-weight:700; width:100%; margin-bottom:2px;
+    }
+    .review-item-serials .serial-chip {
+      background:var(--bg-card); border:1px solid var(--border);
+      color:#f0b90b; font-family:'Consolas','Monaco',monospace;
+      font-size:11px; padding:3px 10px; border-radius:12px; font-weight:700;
+    }
+
+    .review-item-hint {
+      color:var(--text-dim); font-size:11.5px; font-style:italic;
+      padding:6px 10px; background:var(--bg-header); border-radius:6px; display:inline-block;
+      margin-top:8px;
+    }
+    .review-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+    .review-field { display:flex; flex-direction:column; }
+    .review-field.full { grid-column:1 / -1; }
+    .review-field label {
+      color:var(--text-muted); font-size:10px; text-transform:uppercase;
+      letter-spacing:.5px; margin-bottom:4px; font-weight:600;
+    }
+    .review-field input,
+    .review-field select {
+      background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border);
+      padding:8px 12px; border-radius:6px; font-size:13px; width:100%; font-family:inherit;
+    }
+    .review-field input:focus { outline:none; border-color:var(--accent); }
+
+    /* MOBILE */
+    @media (max-width: 1100px) {
+      .workspace { flex-direction:column; }
+      .cart-pane { width:100%; max-height:420px; }
+    }
+    @media (max-width: 768px) {
+      .sidebar { width:70px; padding:20px 10px; }
+      .sidebar .logo, .sidebar .logo-sub, .side-btn span:not(.email-badge) { display:none; }
+      .main { padding:20px; }
+      .table-controls { flex-direction:column; align-items:stretch; }
+      .stats-overview .stat-item { flex:1 1 40%; }
+      .modal-content { padding:20px; }
+      .review-fields { grid-template-columns:1fr; }
+      .row-actions button { min-width:40px; padding:4px 6px; }
+      .row-actions button .icon { font-size:12px; }
+    }
+
+    .icon3 { width:15px; height:15px; flex-shrink:0; stroke-width:1.8; color:inherit; stroke:currentColor; }
+
+    /* ⭐ Added cell */
+.added-cell {
+  white-space: nowrap;
+  font-size: 12px;
+}
+.added-cell .added-date {
+  color: var(--text-secondary);
+  font-weight: 600;
+  display: block;
+  line-height: 1.3;
+}
+.added-cell .added-time {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  line-height: 1.3;
+}
+  </style>
+  <link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo-wrap">
+        <img src="img/logo.png" alt="Examedia" class="brand-logo" />
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-dept">TSD WMS</div>
+      <div class="brand-tagline">Technical Support Department</div>
+      <div class="brand-tagline">Warehouse Management System</div>
+    </div>
+
+    <div class="sidebar-nav">
+    <button class="side-btn" onclick="location.href='/dashboard.html'"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+    <button class="side-btn" onclick="location.href='/reports.html'"><i data-lucide="bar-chart-3"></i> <span>Reports</span></button>
+    <button class="side-btn" onclick="location.href='/inventory.html'"><i data-lucide="package"></i> <span>Inventory List</span></button>
+    <button class="side-btn" onclick="location.href='/assets.html'"><i data-lucide="hard-drive"></i> <span>Assets</span></button>
+    <button class="side-btn" onclick="location.href='/loans.html'"><i data-lucide="arrow-right-left"></i> <span>Loan Tracking</span></button>
+    <button class="side-btn" onclick="location.href='/requests.html'"><i data-lucide="inbox"></i> <span>Requests</span></button>
+    <button class="side-btn" onclick="location.href='/finance.html'"><i data-lucide="shopping-cart"></i> <span>Procurement</span></button>
+    <button class="side-btn active" onclick="location.href='/so-codes.html'"><i data-lucide="file-text"></i> <span>SO Codes</span></button>
+    <button class="side-btn" onclick="location.href='/audit.html'"><i data-lucide="search"></i> <span>Audit</span></button>
+    <button class="side-btn" onclick="location.href='/emails.html'"><i data-lucide="mail"></i> <span>Emails</span></button>
+    <button class="side-btn" onclick="location.href='/users.html'"><i data-lucide="users"></i> <span>Users</span></button>
+    <button class="side-btn" onclick="location.href='/settings.html'"><i data-lucide="settings"></i> <span>Settings</span></button>
+    <button class="side-btn logout-btn" onclick="logout()"><i data-lucide="log-out"></i> <span>Logout</span></button>
+     </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+
+    <div class="main-header">
+      <h1 style="font-weight: bold;">Inventory Master List</h1>
+      <div class="header-right">
+        <div id="notificationBell"></div>
+        <div class="user-badge">
+          👤 Welcome, <span id="userName">…</span>
+          <span class="role-tag" id="userRole"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-overview">
+      <div class="stat-item" onclick="applyCategoryFilter('hdd', this)">
+        <div class="stat-value" id="stat-hdd">0</div>
+        <div class="stat-label">HDD/SSD</div>
+      </div>
+      <div class="stat-item" onclick="applyCategoryFilter('memory', this)">
+        <div class="stat-value" id="stat-memory">0</div>
+        <div class="stat-label">MEMORY</div>
+      </div>
+      <div class="stat-item" onclick="applyCategoryFilter('psu', this)">
+        <div class="stat-value" id="stat-psu">0</div>
+        <div class="stat-label">PSU</div>
+      </div>
+      <div class="stat-item" onclick="applyCategoryFilter('gpu', this)">
+        <div class="stat-value" id="stat-gpu">0</div>
+        <div class="stat-label">GPU</div>
+      </div>
+      <div class="stat-item" onclick="applyCategoryFilter('clients', this)">
+        <div class="stat-value" id="stat-clients">0</div>
+        <div class="stat-label">CLIENTS</div>
+      </div>
+      <div class="stat-item low-stock" onclick="applyCategoryFilter('low', this)">
+        <div class="stat-value" id="stat-low">0</div>
+        <div class="stat-label">LOW STOCK</div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div class="workspace">
+
+      <!-- LEFT: Inventory -->
+      <div class="inventory-pane">
+               <div class="table-controls">
+          <!-- Left Side: Show entries & Archived toggle -->
+          <div class="entries">
+            <div style="display:flex; align-items:center; gap:8px;">
+              Show 
+              <select><option>25</option><option>50</option><option>100</option></select> 
+              entries
+            </div>
+            <label class="archive-toggle">
+              <input type="checkbox" id="showArchived" onchange="renderTable(lastRenderedData)" />
+              Show Archived
+            </label>
+          </div>
+
+          <!-- Right Side: Search & Action Buttons -->
+          <div class="table-actions">
+            
+            <!-- 1. Search Bar -->
+            <div class="search-group">
+              <input type="text" id="searchKeyword" placeholder="Search any field..." onkeyup="applyFilters()" />
+              <button onclick="applyFilters()">Search</button>
+            </div>
+
+            <!-- 2. Buttons -->
+            <div class="button-group">
+              <button class="btn-action btn-template" onclick="downloadExcelTemplate()">
+                <i data-lucide="download"></i> Template
+              </button>
+              
+              <button class="btn-action btn-import" onclick="document.getElementById('excelUpload').click()">
+                <i data-lucide="upload"></i> Import
+              </button>
+              <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleExcelImport(event)" />
+              
+              <button class="btn-action btn-export" onclick="exportInventory()">
+                <i data-lucide="download"></i> Export
+              </button>
+              
+              <button class="btn-action btn-add" onclick="openAddModal()">
+                <i data-lucide="plus"></i> Add New
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Client/Site</th>
+                  <th>Category</th>
+                  <th>Asset Tag</th>
+                  <th>SO Code</th>
+                  <th>Serials</th>
+                  <th>Description</th>
+                  <th>Qty</th>
+                  <th>Rack</th>
+                  <th>Added</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryBody">
+                <tr class="empty-row"><td colspan="11">📭 Loading inventory from database...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Cart -->
+      <aside class="cart-pane">
+        <div class="cart-header">
+          <span>🛒 Selected</span>
+          <span class="cart-count-badge" id="cartCount">0</span>
+        </div>
+        <div class="cart-list" id="cartList">
+          <div class="cart-empty" id="cartEmpty">
+            <span class="big-icon">🛒</span>
+            No items yet.<br>
+            Click action buttons on any inventory row.
+          </div>
+        </div>
+        <div class="cart-footer">
+          <button class="btn-clear" id="btnClearCart" onclick="clearCart()" disabled>🗑 Clear</button>
+          <button class="btn-submit-all" id="btnSubmitAll" onclick="openReviewModal()" disabled>📤 Submit All</button>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+    <!-- MODAL: EDIT ITEM -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal-content">
+      <h2>✏️ Edit Inventory Item</h2>
+      <p style="color:#7a8ba3; font-size:13px; margin-bottom:15px;">Update the item's details. (Quantity is managed via serials).</p>
+
+      <input type="hidden" id="editItemId" />
+
+      <div class="form-group">
+        <label>Client / Site <span class="required">*</span></label>
+        <input type="text" id="editClient" list="clientList" required autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label>Category <span class="required">*</span></label>
+        <select id="editCategory" required>
+          <option value="HDD">HDD</option><option value="SSD">SSD</option><option value="NVMe">NVMe</option><option value="Storage">Storage</option>
+          <option value="Memory">Memory</option><option value="RAM">RAM</option><option value="DDR">DDR</option><option value="SODIMM">SODIMM</option>
+          <option value="PSU">PSU</option><option value="Power">Power</option><option value="Power Supply">Power Supply</option>
+          <option value="GPU">GPU</option><option value="Graphics Card">Graphics Card</option><option value="Network">Network Switch</option>
+          <option value="Motherboard">Motherboard</option><option value="Cooling">Cooling</option><option value="Processor">Processor</option>
+          <option value="Accessories">Accessories</option><option value="Disk Shelf">Disk Shelf</option><option value="Firewall">Firewall</option>
+          <option value="Router">Router</option><option value="Server">Server</option><option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Asset Tag / Part # <span class="required">*</span></label>
+        <input type="text" id="editPart" required />
+      </div>
+
+      <div class="form-group">
+        <label>Description <span class="required">*</span></label>
+        <input type="text" id="editDesc" required />
+      </div>
+
+      <div class="form-group">
+        <label>Rack <span class="required">*</span></label>
+        <input type="text" id="editRack" required />
+      </div>
+
+      <div class="form-group">
+        <label>SO Code <span style="color:#7a8ba3; font-weight:400; text-transform:none;">(optional)</span></label>
+        <div class="so-combo" id="editSoCombo">
+          <input type="text" id="editSoComboInput" class="so-combo-input" placeholder="Select SO Code…" autocomplete="off" />
+          <button type="button" class="so-combo-clear" id="editSoComboClear" title="Clear" style="display:none;">✕</button>
+          <div class="so-combo-dropdown" id="editSoComboDropdown" style="display:none;">
+            <div class="so-combo-list" id="editSoComboList"></div>
+          </div>
+        </div>
+        <input type="hidden" id="editSoCodeId" value="" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+        <button class="btn-save" onclick="saveEditedItem()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD ITEM -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-content">
+      <h2>➕ Add New Inventory Item</h2>
+      <p style="color:#7a8ba3; font-size:13px; margin-bottom:15px;">All fields are required <span style="color:#ef6b6b;">*</span></p>
+
+      <div class="form-group">
+        <label>Client / Site <span class="required">*</span></label>
+        <input type="text" id="newClient" list="clientList" placeholder="e.g. BKR, HQ, Warehouse A" required autocomplete="off" />
+        <datalist id="clientList"></datalist>
+      </div>
+
+      <div class="form-group">
+        <label>Category <span class="required">*</span></label>
+        <select id="newCategory" required>
+          <option value="">-- Select Category --</option>
+          <option value="HDD">HDD</option>
+          <option value="SSD">SSD</option>
+          <option value="NVMe">NVMe</option>
+          <option value="Storage">Storage</option>
+          <option value="Memory">Memory</option>
+          <option value="RAM">RAM</option>
+          <option value="DDR">DDR</option>
+          <option value="SODIMM">SODIMM</option>
+          <option value="PSU">PSU</option>
+          <option value="Power">Power</option>
+          <option value="Power Supply">Power Supply</option>
+          <option value="GPU">GPU</option>
+          <option value="Graphics Card">Graphics Card</option>
+          <option value="Network">Network Switch</option>
+          <option value="Motherboard">Motherboard</option>
+          <option value="Cooling">Cooling</option>
+          <option value="Processor">Processor</option>
+          <option value="Accessories">Accessories</option>
+          <option value="Disk Shelf">Disk Shelf</option>
+          <option value="Firewall">Firewall</option>
+          <option value="Router">Router</option>
+          <option value="Server">Server</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Asset Tag / Part # <span class="required">*</span></label>
+        <input type="text" id="newPart" placeholder="e.g. 371-1900-01" required />
+      </div>
+
+      <div class="form-group">
+        <label>Description <span class="required">*</span></label>
+        <input type="text" id="newDesc" placeholder="e.g. 4GB, 10GB, 750W" required />
+      </div>
+
+      <div class="form-group">
+        <label>Rack <span class="required">*</span></label>
+        <input type="text" id="newRack" placeholder="e.g. R8L2, R1L1" required />
+      </div>
+
+      <!-- ⭐ SO Code combobox -->
+<div class="form-group">
+  <label>SO Code <span style="color:#7a8ba3; font-weight:400; text-transform:none;">(optional)</span></label>
+  <div class="so-combo" id="invSoCombo">
+    <input type="text" id="invSoComboInput" class="so-combo-input"
+           placeholder="Select SO Code…" autocomplete="off" spellcheck="false" />
+    <button type="button" class="so-combo-clear" id="invSoComboClear"
+            title="Clear" style="display:none;">✕</button>
+    <div class="so-combo-dropdown" id="invSoComboDropdown" style="display:none;">
+      <div class="so-combo-list" id="invSoComboList"></div>
+    </div>
+  </div>
+  <input type="hidden" id="invSoCodeId" value="" />
+</div>
+
+      <div class="form-group">
+        <label>Quantity <span class="required">*</span></label>
+        <input type="number" id="newQty" placeholder="0" min="1" value="1" required oninput="updateSerialFields()" onchange="updateSerialFields()" />
+      </div>
+
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Serial Numbers <span class="required">*</span></label>
+        <div class="serial-inputs-wrap" id="serialFieldsContainer"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+        <button class="btn-save" onclick="saveNewItem()">Save Item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SERIAL INFO (read-only) -->
+  <div class="modal-overlay" id="serialInfoModal">
+    <div class="modal-content wide">
+      <h2>ℹ️ Item Details — <span id="siTitle" style="color:var(--accent); font-weight:700;"></span></h2>
+      <div id="siMeta" style="color:var(--text-muted); font-size:13px; margin-bottom:16px; line-height:1.7;"></div>
+      <div id="siBody"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeSerialInfoModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⭐ MODAL: SERIAL PICKER (multi-select, all actions) -->
+  <div class="modal-overlay" id="serialPickModal">
+    <div class="modal-content">
+      <h2 id="pickTitle">Select Serials</h2>
+
+      <div class="serial-pick-header">
+        <div class="sph-info" id="pickInfo"></div>
+        <div class="sph-count zero" id="pickCount">0 selected</div>
+      </div>
+
+      <div class="serial-pick-list" id="serialPickList"></div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeSerialPickModal()">Cancel</button>
+        <button class="btn-save" id="btnConfirmPick" onclick="confirmSerialPick()" disabled>✓ Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REVIEW & CONFIRM -->
+  <div class="modal-overlay" id="reviewModal">
+    <div class="modal-content wide">
+      <h2>📤 Review &amp; Confirm</h2>
+      <p style="color:#7a8ba3; font-size:13px; margin-bottom:15px;">
+        Fill in the details for each item below, then click <b>Confirm All</b>.
+      </p>
+      <div id="reviewBody"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeReviewModal()">Cancel</button>
+        <button class="btn-confirm-all" id="btnConfirmAll" onclick="confirmAndSubmit()">✓ Confirm All</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/notifications.js"></script>
+  <script src="/logout.js"></script>
+  <script src="/escape.js"></script>
+  <script>
+    // ---------- GLOBAL STATE ----------
+    let currentUser = null;
+    let inventoryData = [];
+    let lastRenderedData = [];
+    let currentFilter = null;
+
+    // ⭐ Cart entry shape:
+    // {
+    //   inventory_id, action: 'takeout'|'request'|'loan',
+    //   client, category, part, description, rack,
+    //   maxQty: total stock at time of add,
+    //   serial_ids: [1,2,3],
+    //   serials: ['AAA','BBB','CCC']
+    // }
+    let cart = [];
+
+    // ⭐ Picker state
+    let pickItem = null;
+    let pickAction = null;      // 'takeout' | 'request' | 'loan'
+    let pickSerials = [];        // available serials for this item
+    let pickedIds = new Set();   // currently checked serial_ids
+
+    // ---------- AUTH + LOAD ----------
+    (async function initUser() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.user) { window.location.href = '/login.html'; return; }
+        currentUser = data.user;
+
+        document.getElementById('userName').textContent =
+          currentUser.full_name || currentUser.username || 'User';
+
+        const roleEl = document.getElementById('userRole');
+        if (roleEl) {
+          roleEl.textContent = currentUser.role;
+          roleEl.className = 'role-tag ' + currentUser.role;
+        }
+
+        loadInventory();
+      } catch (e) {
+        console.error('Auth check failed:', e);
+        window.location.href = '/login.html';
+      }
+    })();
+
+    // ---------- LOAD INVENTORY ----------
+    async function loadInventory() {
+      const tbody = document.getElementById('inventoryBody');
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="11">⏳ Loading from database...</td></tr>`;
+
+      try {
+        const response = await fetch('/api/inventory', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch data');
+        inventoryData = await response.json();
+        renderTable(inventoryData);
+        updateStats();
+      } catch (error) {
+        console.error('Error loading inventory:', error);
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="11">❌ Error loading data from database.</td></tr>`;
+      }
+    }
+
+    // ---------- HELPERS ----------
+    function findCartEntry(inventoryId, action) {
+      return cart.find(c => c.inventory_id === inventoryId && c.action === action);
+    }
+
+    function isSerialInCart(serialId) {
+      return cart.some(c => c.serial_ids.includes(serialId));
+    }
+
+    function countSerialIdsForAction(inventoryId, action) {
+      const entry = findCartEntry(inventoryId, action);
+      return entry ? entry.serial_ids.length : 0;
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+        function formatSerialDisplay(serialStr) {
+      if (!serialStr) return '—';
+      // If the serial starts with NONE-, show a dash instead
+      if (serialStr.toUpperCase().startsWith('NONE-')) return '—';
+      return escapeHtml(serialStr);
+    }
+
+    function formatShortDate(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      if (isNaN(d)) return '—';
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+  function formatAddedDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d)) return '—';
+  const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `<div class="added-date">${dateStr}</div><div class="added-time">${timeStr}</div>`;
+}    
+
+    // ---------- RENDER TABLE ----------
+    function renderTable(data) {
+      lastRenderedData = data;
+      const tbody = document.getElementById('inventoryBody');
+      const showArchived = document.getElementById('showArchived')?.checked;
+
+      let visibleData = data;
+      if (!showArchived) {
+        visibleData = data.filter(item => (parseInt(item.qty) || 0) > 0);
+      }
+
+      if (!visibleData || visibleData.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="11">📭 No items in stock.</td></tr>`;
+        return;
+      }
+
+      const isAdmin = currentUser && currentUser.role === 'admin';
+
+      let html = '';
+      visibleData.forEach(item => {
+        const outCount = countSerialIdsForAction(item.inventory_id, 'takeout');
+        const reqCount = countSerialIdsForAction(item.inventory_id, 'request');
+        const loanCount = countSerialIdsForAction(item.inventory_id, 'loan');
+        const qty = parseInt(item.qty) || 0;
+        const isArchived = qty === 0;
+
+        html += `<tr class="${isArchived ? 'archived-row' : ''}">
+          <td>${item.inventory_id || '—'}</td>
+          <td>${escapeHtml(item.client || '—')}</td>
+          <td>${escapeHtml(item.category || '—')}</td>
+                    <td>${escapeHtml(item.part || '—')}</td>
+          <td>
+            ${item.so_number
+              ? `<span class="so-badge" title="${escapeAttr(item.so_number + (item.so_customer ? ' — ' + item.so_customer : ''))}">${escapeHtml(item.so_number)}</span>`
+              : `<span class="so-badge empty">—</span>`}
+          </td>
+          <td>
+            <button class="serials-cell" onclick="openSerialInfoModal(${item.inventory_id})" title="View all serials">
+              <i data-lucide="info"></i>
+              <span class="serial-count">${qty}</span>
+              <span>unit${qty === 1 ? '' : 's'}</span>
+            </button>
+          </td>
+          <td>${escapeHtml(item.description || '—')}</td>
+          <td><span class="badge-qty ${isArchived ? 'zero' : ''}">${qty}</span></td>
+          <td>${escapeHtml(item.rack || '—')}</td>
+          <td class="added-cell">${formatAddedDate(item.created_at)}</td>
+          <td>
+            <div class="row-actions">
+              ${!isArchived ? `
+                              <button class="btn-takeout" style="background:#3b82f6; color:#fff;"
+                        onclick="openEditModal(${item.inventory_id})"
+                        title="Edit Item">
+                  <i class="icon3" data-lucide="pencil"></i>
+                  <span>Edit</span>
+                </button>  
+              <button class="btn-takeout ${outCount ? 'queued' : ''}"
+                        data-qty="${outCount || ''}"
+                        onclick="beginAction(${item.inventory_id}, 'takeout')"
+                        title="Take Out (dispose)">
+                  <i class="icon3" data-lucide="upload"></i>
+                  <span>Out</span>
+                </button>
+                <button class="btn-request ${reqCount ? 'queued' : ''}"
+                        data-qty="${reqCount || ''}"
+                        onclick="beginAction(${item.inventory_id}, 'request')"
+                        title="Request">
+                  <i class="icon3" data-lucide="send"></i>
+                  <span>Req</span>
+                </button>
+                ${isAdmin
+                  ? `<button class="btn-loan ${loanCount ? 'queued' : ''}"
+                             data-qty="${loanCount || ''}"
+                             onclick="beginAction(${item.inventory_id}, 'loan')"
+                             title="Loan">
+                       <i class="icon3" data-lucide="arrow-right-left"></i>
+                       <span>Loan</span>
+                     </button>`
+                  : ''}
+              ` : `<span style="color:var(--text-muted); font-size:11px; font-style:italic;">Archived</span>`}
+            </div>
+          </td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // ---------- STATS ----------
+    function updateStats() {
+      let sums = { hdd: 0, memory: 0, psu: 0, gpu: 0 };
+      let clientsSet = new Set();
+      const partTotals = {};
+
+      inventoryData.forEach(item => {
+        const qty = parseInt(item.qty) || 0;
+        const cat = item.category || '';
+        if (['HDD', 'SSD', 'NVMe', 'Storage'].includes(cat)) sums.hdd += qty;
+        if (['Memory', 'RAM', 'DDR', 'SODIMM'].includes(cat)) sums.memory += qty;
+        if (['PSU', 'Power', 'Power Supply'].includes(cat)) sums.psu += qty;
+        if (['GPU', 'Graphics Card'].includes(cat)) sums.gpu += qty;
+        if (item.client && qty > 0) clientsSet.add(item.client);
+
+        const p = item.part || '';
+        if (p) partTotals[p] = (partTotals[p] || 0) + qty;
+      });
+
+      const lowPartsCount = Object.values(partTotals).filter(total => total > 0 && total <= 5).length;
+
+      document.getElementById('stat-hdd').textContent = sums.hdd;
+      document.getElementById('stat-memory').textContent = sums.memory;
+      document.getElementById('stat-psu').textContent = sums.psu;
+      document.getElementById('stat-gpu').textContent = sums.gpu;
+      document.getElementById('stat-clients').textContent = clientsSet.size;
+      document.getElementById('stat-low').textContent = lowPartsCount;
+    }
+
+    // ---------- FILTER / SEARCH ----------
+    function applyCategoryFilter(type, element) {
+      document.querySelectorAll('.stat-item').forEach(el => el.classList.remove('active-filter'));
+      if (currentFilter === type) {
+        currentFilter = null;
+        renderTable(inventoryData);
+        document.getElementById('searchKeyword').value = '';
+        return;
+      }
+      currentFilter = type;
+      element.classList.add('active-filter');
+
+      let filtered = [];
+      if (type === 'hdd')         filtered = inventoryData.filter(i => ['HDD','SSD','NVMe','Storage'].includes(i.category || ''));
+      else if (type === 'memory') filtered = inventoryData.filter(i => ['Memory','RAM','DDR','SODIMM'].includes(i.category || ''));
+      else if (type === 'psu')    filtered = inventoryData.filter(i => ['PSU','Power','Power Supply'].includes(i.category || ''));
+      else if (type === 'gpu')    filtered = inventoryData.filter(i => ['GPU','Graphics Card'].includes(i.category || ''));
+      else if (type === 'clients') filtered = inventoryData;
+      else if (type === 'low') {
+        const partTotals = {};
+        inventoryData.forEach(i => {
+          const p = i.part || '';
+          partTotals[p] = (partTotals[p] || 0) + (parseInt(i.qty) || 0);
+        });
+        const lowParts = new Set(Object.entries(partTotals)
+          .filter(([, total]) => total > 0 && total <= 5)
+          .map(([p]) => p));
+        filtered = inventoryData.filter(i => lowParts.has(i.part));
+      }
+      else                        filtered = inventoryData;
+      renderTable(filtered);
+    }
+
+    function applyFilters() {
+      const keyword = document.getElementById('searchKeyword').value.toLowerCase().trim();
+      if (!keyword) { renderTable(inventoryData); return; }
+      const results = inventoryData.filter(item => {
+        const s = `${item.client || ''} ${item.category || ''} ${item.part || ''} ${item.serial || ''} ${item.description || ''} ${item.rack || ''}`.toLowerCase();
+        return s.includes(keyword);
+      });
+      renderTable(results);
+    }
+
+    // ---------- EXPORT TO CSV ----------
+    function exportInventory() {
+      const rows = document.querySelectorAll('#inventoryBody tr');
+      if (!rows.length || rows[0].classList.contains('empty-row')) {
+        alert('⚠️ Nothing to export.');
+        return;
+      }
+
+      const headers = ['ID', 'Client/Site', 'Category', 'Asset Tag', 'Serials', 'Description', 'Qty', 'Rack'];
+      const lines = [headers.map(csvCell).join(',')];
+
+      rows.forEach(tr => {
+        const cells = tr.querySelectorAll('td');
+        const values = [];
+        for (let i = 0; i < cells.length - 1; i++) {
+          values.push(csvCell(cells[i].innerText.trim()));
+        }
+        lines.push(values.join(','));
+      });
+
+      const csv = lines.join('\r\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const today = new Date().toISOString().split('T')[0];
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `inventory-${today}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function csvCell(value) {
+      if (value == null) return '';
+      const s = String(value);
+      if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    // ---------- LOAD CLIENTS ----------
+    async function loadClientsForAddForm() {
+      try {
+        const response = await fetch('/api/clients', { credentials: 'include' });
+        const clients = await response.json();
+        const datalist = document.getElementById('clientList');
+        datalist.innerHTML = clients.map(c => `<option value="${c}"></option>`).join('');
+      } catch (e) {
+        console.error('Error loading clients:', e);
+      }
+    }
+
+    // ---------- ADD ITEM MODAL ----------
+    function updateSerialFields() {
+      const qtyInput = document.getElementById('newQty');
+      let qty = parseInt(qtyInput.value) || 1;
+      if (qty < 1) qty = 1;
+      if (qty > 50) qty = 50;
+
+      const container = document.getElementById('serialFieldsContainer');
+      const current = container.querySelectorAll('input.serial-input').length;
+      if (qty === current) return;
+
+      const existing = Array.from(container.querySelectorAll('input.serial-input')).map(i => i.value);
+
+      let html = '';
+      for (let i = 0; i < qty; i++) {
+        const val = existing[i] || '';
+        html += `
+          <div class="form-group">
+            <label style="font-size:10px;">Serial #${i + 1} <span class="required">*</span></label>
+            <input type="text" class="serial-input" placeholder="Serial number for unit ${i + 1}" value="${escapeHtml(val)}" required />
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    async function openAddModal() {
+  document.getElementById('addModal').classList.add('show');
+  document.getElementById('newClient').value = '';
+  document.getElementById('newCategory').value = '';
+  document.getElementById('newPart').value = '';
+  document.getElementById('newDesc').value = '';
+  document.getElementById('newRack').value = '';
+  document.getElementById('newQty').value = 1;
+
+  document.getElementById('serialFieldsContainer').innerHTML = '';
+  updateSerialFields();
+
+  // ⭐ SO Code setup
+  clearInvSoCode();
+  closeInvSoCombo();
+  await loadInvSoCodes();
+
+  loadClientsForAddForm();
+}
+    function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
+
+    async function saveNewItem() {
+      const client      = document.getElementById('newClient').value.trim().toUpperCase();
+      const category    = document.getElementById('newCategory').value;
+      const part        = document.getElementById('newPart').value.trim();
+      const description = document.getElementById('newDesc').value.trim();
+      const rack        = document.getElementById('newRack').value.trim();
+      const qtyInput    = parseInt(document.getElementById('newQty').value) || 0;
+        const so_code_id  = document.getElementById('invSoCodeId').value || '';
+
+      if (!client || !category || !part || !description || !rack) {
+        alert('⚠️ All fields are required.'); return;
+      }
+      if (qtyInput < 1) { alert('⚠️ Quantity must be at least 1.'); return; }
+
+      const serialInputs = document.querySelectorAll('#serialFieldsContainer input.serial-input');
+      if (serialInputs.length !== qtyInput) {
+        alert('⚠️ Number of serial fields does not match quantity. Change qty again.'); return;
+      }
+      const serials = Array.from(serialInputs).map(i => i.value.trim());
+      if (serials.some(s => !s)) { alert('⚠️ All serial numbers must be filled.'); return; }
+
+      const dup = serials.filter((s, i) => serials.indexOf(s) !== i);
+      if (dup.length) { alert(`⚠️ Duplicate serial in submission: ${dup[0]}`); return; }
+
+      try {
+        const response = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ client, category, part, description, rack, serials, so_code_id })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to save');
+
+        alert(`✅ ${serials.length} unit(s) of "${part}" added successfully!`);
+        await loadInventory();
+        closeAddModal();
+      } catch (error) {
+        alert(`❌ Failed to save: ${error.message}`);
+      }
+    }
+
+    // ============================================================
+    // ⭐ SERIAL PICKER — used by Out / Req / Loan
+    // ============================================================
+    async function beginAction(inventoryId, action) {
+      const item = inventoryData.find(i => i.inventory_id === inventoryId);
+      if (!item) return;
+
+      const qty = parseInt(item.qty) || 0;
+      if (qty <= 0) { alert('⚠️ Item is out of stock.'); return; }
+
+      if (action === 'loan' && (!currentUser || currentUser.role !== 'admin')) {
+        alert('Only admin can create loans.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/inventory/${inventoryId}/serials`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load serials');
+        const serials = await res.json();
+
+        // Only in_stock serials, and not already in cart
+        const available = serials.filter(s =>
+          s.status === 'in_stock' && !isSerialInCart(s.serial_id)
+        );
+
+        if (available.length === 0) {
+          alert('⚠️ No serials available (all may already be in the cart).');
+          return;
+        }
+
+        // If only 1 serial, auto-add — no picker needed
+        if (available.length === 1) {
+          addToCartWithSerials(item, action, [available[0]]);
+          return;
+        }
+
+        // Multiple → open picker
+        pickItem = item;
+        pickAction = action;
+        pickSerials = available;
+        pickedIds = new Set();
+        renderSerialPicker();
+        document.getElementById('serialPickModal').classList.add('show');
+      } catch (e) {
+        alert('❌ ' + e.message);
+      }
+    }
+
+    function renderSerialPicker() {
+      const titleEl = document.getElementById('pickTitle');
+      const infoEl = document.getElementById('pickInfo');
+      const countEl = document.getElementById('pickCount');
+      const list = document.getElementById('serialPickList');
+      const btn = document.getElementById('btnConfirmPick');
+
+      const labels = {
+        takeout: { title: 'Take Out (Dispose)', verb: 'dispose', note: 'These units will be permanently removed from inventory.' },
+        request: { title: 'Request Item',       verb: 'request', note: 'Serials will be reserved until the request is completed or rejected.' },
+        loan:    { title: 'Loan Item',          verb: 'loan',    note: 'Serials will be marked as loaned out.' }
+      };
+      const L = labels[pickAction];
+
+      titleEl.textContent = L.title;
+      infoEl.innerHTML = `
+        <b>${escapeHtml(pickItem.category)} — ${escapeHtml(pickItem.part)}</b>
+        · ${escapeHtml(pickItem.client || '—')} · Rack ${escapeHtml(pickItem.rack || '—')}
+        · Stock: <b>${pickItem.qty}</b> · <i>${escapeHtml(L.note)}</i>
+      `;
+
+      if (pickSerials.length === 0) {
+        list.innerHTML = `<div class="serial-pick-empty">No serials available to select.</div>`;
+        btn.disabled = true;
+        return;
+      }
+
+      list.innerHTML = pickSerials.map(s => `
+        <label class="serial-pick-item" data-id="${s.serial_id}">
+          <input type="checkbox" value="${s.serial_id}" onchange="togglePick(${s.serial_id}, this.checked)" />
+          <span class="sp-serial">${formatSerialDisplay(s.serial)}</span>
+          <span class="sp-meta">
+            <span class="sp-status ${escapeHtml(s.status)}">${escapeHtml(s.status.replace(/_/g, ' '))}</span>
+            <span>added ${escapeHtml(formatShortDate(s.added_at))}</span>
+          </span>
+        </label>
+      `).join('');
+
+      updatePickCount();
+    }
+
+    function togglePick(serialId, checked) {
+      if (checked) pickedIds.add(serialId);
+      else pickedIds.delete(serialId);
+      document.querySelectorAll('.serial-pick-item').forEach(el => {
+        const id = parseInt(el.dataset.id);
+        el.classList.toggle('selected', pickedIds.has(id));
+      });
+      updatePickCount();
+    }
+
+    function updatePickCount() {
+      const countEl = document.getElementById('pickCount');
+      const btn = document.getElementById('btnConfirmPick');
+      const n = pickedIds.size;
+      countEl.textContent = `${n} selected`;
+      countEl.classList.toggle('zero', n === 0);
+      btn.disabled = n === 0;
+    }
+
+    function confirmSerialPick() {
+      if (pickedIds.size === 0 || !pickItem) return;
+      const selected = pickSerials.filter(s => pickedIds.has(s.serial_id));
+      addToCartWithSerials(pickItem, pickAction, selected);
+      closeSerialPickModal();
+    }
+
+    function closeSerialPickModal() {
+      document.getElementById('serialPickModal').classList.remove('show');
+      pickItem = null; pickAction = null; pickSerials = []; pickedIds = new Set();
+    }
+
+    // ⭐ Add (or merge) cart entry with serials
+    function addToCartWithSerials(item, action, serials) {
+      const newIds = serials.map(s => s.serial_id);
+      const newSers = serials.map(s => s.serial);
+
+      const existing = findCartEntry(item.inventory_id, action);
+      if (existing) {
+        // Merge — skip serials already in this entry
+        newIds.forEach((id, i) => {
+          if (!existing.serial_ids.includes(id)) {
+            existing.serial_ids.push(id);
+            existing.serials.push(newSers[i]);
+          }
+        });
+      } else {
+        cart.push({
+          inventory_id: item.inventory_id,
+          action: action,
+          client: item.client,
+          category: item.category,
+          part: item.part,
+          description: item.description,
+          rack: item.rack,
+          maxQty: parseInt(item.qty) || 1,
+          serial_ids: newIds,
+          serials: newSers
+        });
+      }
+
+      renderCart();
+      renderTable(lastRenderedData);
+    }
+
+    // ---------- CART: REMOVE / CLEAR ----------
+    function removeFromCart(idx) {
+      cart.splice(idx, 1);
+      renderCart();
+      renderTable(lastRenderedData);
+    }
+
+    function clearCart() {
+      if (cart.length === 0) return;
+      if (!confirm(`Clear all ${cart.length} item(s) from the list?`)) return;
+      cart = [];
+      renderCart();
+      renderTable(lastRenderedData);
+    }
+
+    // ---------- CART: RENDER ----------
+    function renderCart() {
+      const list = document.getElementById('cartList');
+      const countEl = document.getElementById('cartCount');
+      const btnClear = document.getElementById('btnClearCart');
+      const btnSubmit = document.getElementById('btnSubmitAll');
+
+      const totalUnits = cart.reduce((sum, c) => sum + c.serial_ids.length, 0);
+      countEl.textContent = totalUnits;
+      btnClear.disabled = cart.length === 0;
+      btnSubmit.disabled = cart.length === 0;
+
+      if (cart.length === 0) {
+        list.innerHTML = `
+          <div class="cart-empty">
+            <span class="big-icon">🛒</span>
+            No items yet.<br>
+            Click action buttons on any inventory row.
+          </div>`;
+        return;
+      }
+
+      const labels = {
+        takeout: '<i class="icon3" data-lucide="upload"></i> Decompose',
+        request: '<i class="icon3" data-lucide="send"></i> Request',
+        loan:    '<i class="icon3" data-lucide="arrow-right-left"></i> Loan'
+      };
+
+      list.innerHTML = cart.map((c, idx) => {
+        const metaParts = [];
+        if (c.client) metaParts.push(escapeHtml(c.client));
+        if (c.rack) metaParts.push('Rack ' + escapeHtml(c.rack));
+
+        // ⭐ Serial chips
+        const maxChips = 4;
+        const visible = c.serials.slice(0, maxChips);
+        const remaining = c.serials.length - visible.length;
+        const chipsHtml = visible.map(s =>
+          `<span class="serial-chip">${escapeHtml(s)}</span>`
+        ).join('');
+        const moreHtml = remaining > 0
+          ? `<span class="serial-chip">${formatSerialDisplay(s)}</span>`
+          : '';
+
+        return `
+          <div class="cart-item">
+            <span class="action-badge ${c.action}">${labels[c.action]}</span>
+            <div class="item-name">${escapeHtml(c.category)} — ${escapeHtml(c.part)}</div>
+            <div class="item-meta">${metaParts.join(' · ') || '—'} · <b style="color:var(--text-primary);">${c.serial_ids.length}</b> unit(s)</div>
+            <div class="cart-serial-chips">
+              ${chipsHtml}${moreHtml}
+            </div>
+            <button class="remove-btn" onclick="removeFromCart(${idx})" title="Remove">✕</button>
+          </div>`;
+      }).join('');
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // ---------- REVIEW MODAL ----------
+    function openReviewModal() {
+      if (cart.length === 0) {
+        alert('⚠️ No items to submit.');
+        return;
+      }
+
+      const body = document.getElementById('reviewBody');
+      body.innerHTML = cart.map((item, idx) => renderReviewItem(item, idx)).join('');
+
+      document.getElementById('reviewModal').classList.add('show');
+    }
+
+    function closeReviewModal() {
+      document.getElementById('reviewModal').classList.remove('show');
+    }
+
+    function renderReviewItem(item, idx) {
+      const n = item.serial_ids.length;
+      const serialChips = item.serials.map(s =>
+        `<span class="serial-chip">${formatSerialDisplay(s)}</span>`
+      ).join('');
+
+      const header = `
+        <div class="review-item-header">
+          <span class="action-badge ${item.action}">${item.action === 'takeout' ? '🚚 Take Out' : item.action === 'request' ? '📨 Request' : '🔁 Loan'}</span>
+          <span class="review-item-title">${escapeHtml(item.category)} — ${escapeHtml(item.part)} × ${n}</span>
+        </div>
+        <div class="review-item-meta">
+          Client: ${escapeHtml(item.client || '—')} · Rack: ${escapeHtml(item.rack || '—')} · Stock: ${item.maxQty}
+        </div>
+        <div class="review-item-serials">
+          <span class="rl-label">Serials (${n})</span>
+          ${serialChips}
+        </div>`;
+
+      if (item.action === 'takeout') {
+        return `
+          <div class="review-item">
+            ${header}
+            <div class="review-item-hint" style="margin-top:10px;">Will permanently dispose <b>${n}</b> unit(s).</div>
+          </div>`;
+      }
+
+      if (item.action === 'request') {
+        return `
+          <div class="review-item">
+            ${header}
+            <div class="review-fields" style="margin-top:10px;">
+              <div class="review-field full">
+                <label>Justification</label>
+                <input type="text" id="rv-just-${idx}" placeholder="For work purposes" value="For work purposes" />
+              </div>
+            </div>
+          </div>`;
+      }
+
+      if (item.action === 'loan') {
+        const defaultDue = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+        return `
+          <div class="review-item">
+            ${header}
+            <div class="review-fields" style="margin-top:10px;">
+              <div class="review-field full">
+                <label>Customer / Company *</label>
+                <input type="text" id="rv-cust-${idx}" placeholder="e.g. ACME Corp" />
+              </div>
+              <div class="review-field">
+                <label>Contact Person</label>
+                <input type="text" id="rv-contact-${idx}" placeholder="e.g. John Doe" />
+              </div>
+              <div class="review-field">
+                <label>Phone</label>
+                <input type="text" id="rv-phone-${idx}" placeholder="+60 12-345 6789" />
+              </div>
+              <div class="review-field full">
+                <label>Email</label>
+                <input type="email" id="rv-email-${idx}" placeholder="john@acme.com" />
+              </div>
+              <div class="review-field">
+                <label>Due Date *</label>
+                <input type="date" id="rv-due-${idx}" value="${defaultDue}" />
+              </div>
+              <div class="review-field">
+                <label>Rate (RM / unit)</label>
+                <input type="number" id="rv-rate-${idx}" step="0.01" placeholder="Optional" />
+              </div>
+              <div class="review-field full">
+                <label>Notes</label>
+                <input type="text" id="rv-notes-${idx}" placeholder="Any special conditions" />
+              </div>
+            </div>
+          </div>`;
+      }
+    }
+
+    // ---------- CONFIRM AND SUBMIT ALL ----------
+    async function confirmAndSubmit() {
+      const btn = document.getElementById('btnConfirmAll');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '⏳ Submitting…';
+
+      const success = [];
+      const failed = [];
+
+      for (let i = 0; i < cart.length; i++) {
+        const item = cart[i];
+        const n = item.serial_ids.length;
+
+        try {
+          if (item.action === 'takeout') {
+            // ⭐ Send serial_ids array
+            const res = await fetch(`/api/inventory/${item.inventory_id}/takeout`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ serial_ids: item.serial_ids })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed');
+            success.push(item);
+          }
+          else if (item.action === 'request') {
+            const justification = document.getElementById(`rv-just-${i}`).value.trim() || 'For work purposes';
+
+            // ⭐ Send serial_ids + qty
+            const res = await fetch('/api/requests', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                inventory_id: item.inventory_id,
+                client: item.client,
+                category: item.category,
+                part: item.part,
+                description: item.description,
+                qty: n,
+                rack: item.rack,
+                justification: justification,
+                priority: 'medium',
+                request_type: 'internal',
+                status: 'pending',
+                serial_ids: item.serial_ids
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed');
+            success.push(item);
+          }
+          else if (item.action === 'loan') {
+            const customer_name  = document.getElementById(`rv-cust-${i}`).value.trim();
+            const contact_person = document.getElementById(`rv-contact-${i}`).value.trim();
+            const contact_phone  = document.getElementById(`rv-phone-${i}`).value.trim();
+            const contact_email  = document.getElementById(`rv-email-${i}`).value.trim();
+            const due_date       = document.getElementById(`rv-due-${i}`).value;
+            const rate           = document.getElementById(`rv-rate-${i}`).value;
+            const notes          = document.getElementById(`rv-notes-${i}`).value.trim();
+
+            if (!customer_name) throw new Error('Customer name required');
+            if (!due_date) throw new Error('Due date required');
+
+            // ⭐ Send serial_ids + qty
+            const res = await fetch('/api/loans', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                inventory_id: item.inventory_id,
+                customer_name, contact_person, contact_phone, contact_email,
+                qty: n,
+                due_date,
+                rate: rate || null,
+                notes,
+                serial_ids: item.serial_ids
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed');
+            success.push(item);
+          }
+        } catch (e) {
+          failed.push({ item, error: e.message });
+        }
+      }
+
+      btn.disabled = false;
+      btn.textContent = original;
+
+      if (failed.length === 0) {
+        alert(`✅ All ${success.length} item(s) processed successfully!`);
+        cart = [];
+        renderCart();
+        renderTable(lastRenderedData);
+        closeReviewModal();
+        await loadInventory();
+      } else if (success.length === 0) {
+        alert(`❌ All ${failed.length} item(s) failed:\n\n${failed.map(f => `• ${f.item.part}: ${f.error}`).join('\n')}`);
+      } else {
+        alert(`⚠️ ${success.length} succeeded, ${failed.length} failed:\n\n${failed.map(f => `• ${f.item.part}: ${f.error}`).join('\n')}`);
+        cart = failed.map(f => f.item);
+        renderCart();
+        renderTable(lastRenderedData);
+        closeReviewModal();
+        await loadInventory();
+      }
+    }
+
+    // ---------- SERIAL INFO MODAL ----------
+    async function openSerialInfoModal(inventoryId) {
+      const item = inventoryData.find(i => i.inventory_id === inventoryId);
+      if (!item) return;
+
+      document.getElementById('siTitle').textContent = item.part || '(no part)';
+      document.getElementById('siMeta').innerHTML = `
+        <b style="color:var(--text-primary);">${escapeHtml(item.category || '—')}</b>
+        · ${escapeHtml(item.description || '—')}
+        · Client: <b style="color:var(--text-primary);">${escapeHtml(item.client || '—')}</b>
+        · Rack: <b style="color:var(--text-primary);">${escapeHtml(item.rack || '—')}</b>
+        · Total: <b style="color:var(--accent);">${item.qty}</b> unit(s)
+      `;
+
+      const body = document.getElementById('siBody');
+      body.innerHTML = `<div class="serials-empty">⏳ Loading serials…</div>`;
+
+      document.getElementById('serialInfoModal').classList.add('show');
+
+      try {
+        const res = await fetch(`/api/inventory/${inventoryId}/serials`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load serials');
+        const serials = await res.json();
+
+        if (serials.length === 0) {
+          body.innerHTML = `<div class="serials-empty">No serial records found for this item.</div>`;
+          return;
+        }
+
+        body.innerHTML = `
+          <table class="serial-info-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Serial</th>
+                <th>Status</th>
+                <th>Added</th>
+                <th>Added By</th>
+                <th>Removed</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${serials.map((s, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td class="serial-col">${formatSerialDisplay(s.serial)}</td>
+                  <td><span class="status-pill ${escapeHtml(s.status)}">${escapeHtml(s.status.replace(/_/g, ' '))}</span></td>
+                  <td>${escapeHtml(formatShortDate(s.added_at))}</td>
+                  <td>${escapeHtml(s.added_by_name || '—')}</td>
+                  <td>${s.removed_at ? escapeHtml(formatShortDate(s.removed_at)) : '—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        body.innerHTML = `<div class="serials-empty">❌ ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    function closeSerialInfoModal() {
+      document.getElementById('serialInfoModal').classList.remove('show');
+    }
+
+    // ---------- PAGE LOAD ----------
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('searchKeyword').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') applyFilters();
+      });
+      setupInvSoComboEvents();
+    });
+
+    /* =========================================================
+   ⭐ SO CODE COMBOBOX (inventory)
+   ========================================================= */
+let invSoCodeOptions = [];
+let invSoCodeSelectedId = null;
+let invSoCodeLoaded = false;
+let invSoCodeFilter = '';
+
+async function loadInvSoCodes() {
+  if (invSoCodeLoaded) return;
+  try {
+    const res = await fetch('/api/so-codes?status=OPEN&limit=500', { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to load SO Codes');
+    const data = await res.json();
+    invSoCodeOptions = (data.items || []).filter(x => x.status === 'OPEN');
+    invSoCodeLoaded = true;
+  } catch (e) {
+    console.warn('SO Codes load failed:', e.message);
+    invSoCodeOptions = [];
+  }
+}
+
+function openInvSoCombo() {
+  document.getElementById('invSoComboDropdown').style.display = 'flex';
+  renderInvSoList();
+  document.getElementById('invSoComboInput').focus();
+}
+function closeInvSoCombo() {
+  const dd = document.getElementById('invSoComboDropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+function renderInvSoList() {
+  const list = document.getElementById('invSoComboList');
+  if (!list) return;
+  const filter = invSoCodeFilter.toLowerCase().trim();
+  let filtered = invSoCodeOptions;
+  if (filter) {
+    filtered = invSoCodeOptions.filter(s =>
+      (s.so_number || '').toLowerCase().includes(filter) ||
+      (s.partner_customer || '').toLowerCase().includes(filter)
+    );
+  }
+
+  let html = `
+    <div class="so-combo-option none-option ${invSoCodeSelectedId === null ? 'selected' : ''}"
+         data-id="" onclick="selectInvSoCode('')">
+      — None (no SO code) —
+    </div>
+  `;
+
+  if (filtered.length === 0 && filter) {
+    html += `<div class="so-combo-empty">No SO Codes match "${escapeHtml(filter)}".</div>`;
+  } else if (invSoCodeOptions.length === 0) {
+    html += `<div class="so-combo-empty">No OPEN SO Codes available. Sync may not have run yet.</div>`;
+  } else {
+    html += filtered.map(s => {
+      const isSel = invSoCodeSelectedId === s.id;
+      return `
+        <div class="so-combo-option ${isSel ? 'selected' : ''}" data-id="${escapeAttr(s.id)}" onclick="selectInvSoCode('${escapeAttr(s.id)}')">
+          <span class="so-line1">${escapeHtml(s.so_number || s.id)}</span>
+          <span class="so-line2">${escapeHtml(s.partner_customer || '—')}</span>
+        </div>
+      `;
+    }).join('');
+  }
+  list.innerHTML = html;
+}
+
+function selectInvSoCode(id) {
+  invSoCodeSelectedId = id || null;
+  const input = document.getElementById('invSoComboInput');
+  const clearBtn = document.getElementById('invSoComboClear');
+  const hidden = document.getElementById('invSoCodeId');
+
+  if (!id) {
+    input.value = '';
+    input.placeholder = 'Select SO Code…';
+    clearBtn.style.display = 'none';
+    hidden.value = '';
+  } else {
+    const s = invSoCodeOptions.find(x => x.id === id);
+    if (s) {
+      input.value = `${s.so_number || s.id} — ${s.partner_customer || '—'}`;
+      clearBtn.style.display = 'block';
+      hidden.value = s.id;
+    }
+  }
+  invSoCodeFilter = '';
+  closeInvSoCombo();
+}
+
+function clearInvSoCode() {
+  invSoCodeSelectedId = null;
+  invSoCodeFilter = '';
+  const input = document.getElementById('invSoComboInput');
+  if (!input) return;
+  input.value = '';
+  input.placeholder = 'Select SO Code…';
+  document.getElementById('invSoComboClear').style.display = 'none';
+  document.getElementById('invSoCodeId').value = '';
+}
+
+function onInvSoFocus() {
+  invSoCodeFilter = '';
+  openInvSoCombo();
+}
+
+function onInvSoInput(e) {
+  invSoCodeFilter = e.target.value;
+  if (invSoCodeSelectedId) {
+    const s = invSoCodeOptions.find(x => x.id === invSoCodeSelectedId);
+    if (s && e.target.value !== `${s.so_number || s.id} — ${s.partner_customer || '—'}`) {
+      invSoCodeSelectedId = null;
+      document.getElementById('invSoCodeId').value = '';
+      document.getElementById('invSoComboClear').style.display = 'none';
+    }
+  }
+  openInvSoCombo();
+  renderInvSoList();
+}
+
+function onInvSoKeydown(e) {
+  if (e.key === 'Escape') {
+    closeInvSoCombo();
+    e.target.blur();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const options = document.querySelectorAll('#invSoComboList .so-combo-option');
+    if (options.length > 0) options[0].click();
+  }
+}
+
+function setupInvSoComboEvents() {
+  const input = document.getElementById('invSoComboInput');
+  if (!input) return;
+  input.addEventListener('focus', onInvSoFocus);
+  input.addEventListener('input', onInvSoInput);
+  input.addEventListener('keydown', onInvSoKeydown);
+
+  document.getElementById('invSoComboClear').addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearInvSoCode();S
+  });
+
+  document.addEventListener('click', (e) => {
+    const combo = document.getElementById('invSoCombo');
+    if (combo && !combo.contains(e.target)) closeInvSoCombo();
+  });
+}
+
+// ==========================================
+// ⭐ EXCEL TEMPLATE & IMPORT
+// ==========================================
+
+// 1. DOWNLOAD TEMPLATE
+function downloadExcelTemplate() {
+  // We use the exact headers from your UTM file
+  const headers = ['Client/Site', 'Site Code', 'Category', 'Asset Tag', 'Serial Number', 'Description', 'Quantity', 'Rack'];
+  const sampleRow = ['UTM', '2608010', 'Server', '', '0607FU204E', 'Sun Fire X2100', '1', 'None'];
+  
+  const csvContent = headers.join(',') + '\n' + sampleRow.join(',');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'UTM_Asset_Inventory_Template.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// 2. HANDLE IMPORT
+async function handleExcelImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      // Convert to JSON
+      const rows = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: "" });
+      
+      if (rows.length === 0) {
+        alert('⚠️ The Excel file is empty.');
+        return;
+      }
+
+      // Map the exact columns from the UTM Excel Template
+      const items = rows.map(r => ({
+        client: String(r['Client/Site'] || '').trim().toUpperCase(),
+        so_code: String(r['Site Code'] || '').trim() || null,
+        category: String(r['Category'] || '').trim(),
+        part: String(r['Asset Tag'] || '').trim(),
+        serial: String(r['Serial Number'] || '').trim(),
+        description: String(r['Description'] || '').trim(),
+        rack: String(r['Rack'] || '').trim()
+      })).filter(r => r.category && (r.description || r.part)); // Skip completely empty rows
+
+      if (items.length === 0) {
+        alert('⚠️ No valid data found. Please check your columns.');
+        return;
+      }
+
+      if (!confirm(`Ready to import ${items.length} row(s). This will merge items with the same Description and group their serials. Proceed?`)) {
+        event.target.value = '';
+        return;
+      }
+
+      // Show loading on button
+      const btn = event.target.previousElementSibling;
+      const origBtn = btn.innerHTML;
+      btn.innerHTML = '⏳ Importing...';
+      btn.disabled = true;
+
+      // Send to backend bulk endpoint
+      const res = await fetch('/api/inventory/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ items })
+      });
+
+      const result = await res.json();
+      
+      btn.innerHTML = origBtn;
+      btn.disabled = false;
+      event.target.value = ''; // Reset input
+
+      if (!res.ok) throw new Error(result.error || 'Failed to import');
+
+      alert(`✅ ${result.message}`);
+      await loadInventory(); // Refresh the table
+
+    } catch (err) {
+      console.error(err);
+      alert('❌ Import failed: ' + err.message);
+      event.target.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+    // ==========================================
+    // ⭐ EDIT ITEM LOGIC
+    // ==========================================
+    let editSoCodeSelectedId = null;
+    let editSoCodeFilter = '';
+
+    function openEditModal(id) {
+      const item = inventoryData.find(i => i.inventory_id === id);
+      if (!item) return;
+
+      document.getElementById('editItemId').value = item.inventory_id;
+      document.getElementById('editClient').value = item.client || '';
+      document.getElementById('editCategory').value = item.category || '';
+      document.getElementById('editPart').value = item.part || '';
+      document.getElementById('editDesc').value = item.description || '';
+      document.getElementById('editRack').value = item.rack || '';
+
+      clearEditSoCode();
+      loadInvSoCodes().then(() => {
+        if (item.so_code_id) {
+          const exists = invSoCodeOptions.find(s => s.id === item.so_code_id);
+          if (exists) selectEditSoCode(item.so_code_id);
+        }
+      });
+
+      document.getElementById('editModal').classList.add('show');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.remove('show');
+      document.getElementById('editSoComboDropdown').style.display = 'none';
+    }
+
+    async function saveEditedItem() {
+      const id = document.getElementById('editItemId').value;
+      const client = document.getElementById('editClient').value.trim().toUpperCase();
+      const category = document.getElementById('editCategory').value;
+      const part = document.getElementById('editPart').value.trim();
+      const description = document.getElementById('editDesc').value.trim();
+      const rack = document.getElementById('editRack').value.trim();
+      const so_code_id = document.getElementById('editSoCodeId').value || '';
+
+      if (!client || !category || !part || !description || !rack) {
+        alert('⚠️ All required fields must be filled.'); return;
+      }
+
+      try {
+        const res = await fetch(`/api/inventory/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ client, category, part, description, rack, so_code_id })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update');
+
+        alert('✅ Item updated successfully!');
+        closeEditModal();
+        await loadInventory(); 
+      } catch (err) {
+        alert('❌ ' + err.message);
+      }
+    }
+
+    // --- Edit Modal SO Code Combobox ---
+    function renderEditSoList() {
+      const list = document.getElementById('editSoComboList');
+      const filter = editSoCodeFilter.toLowerCase().trim();
+      let filtered = invSoCodeOptions;
+      if (filter) {
+        filtered = invSoCodeOptions.filter(s => (s.so_number || '').toLowerCase().includes(filter) || (s.partner_customer || '').toLowerCase().includes(filter));
+      }
+
+      let html = `<div class="so-combo-option none-option ${editSoCodeSelectedId === null ? 'selected' : ''}" onclick="selectEditSoCode('')">— None (no SO code) —</div>`;
+      html += filtered.map(s => `
+        <div class="so-combo-option ${editSoCodeSelectedId === s.id ? 'selected' : ''}" onclick="selectEditSoCode('${escapeAttr(s.id)}')">
+          <span class="so-line1">${escapeHtml(s.so_number || s.id)}</span>
+          <span class="so-line2">${escapeHtml(s.partner_customer || '—')}</span>
+        </div>
+      `).join('');
+      list.innerHTML = html;
+    }
+
+    function selectEditSoCode(id) {
+      editSoCodeSelectedId = id || null;
+      const input = document.getElementById('editSoComboInput');
+      const clearBtn = document.getElementById('editSoComboClear');
+      
+      if (!id) {
+        input.value = ''; clearBtn.style.display = 'none';
+        document.getElementById('editSoCodeId').value = '';
+      } else {
+        const s = invSoCodeOptions.find(x => x.id === id);
+        if (s) {
+          input.value = `${s.so_number || s.id} — ${s.partner_customer || '—'}`;
+          clearBtn.style.display = 'block';
+          document.getElementById('editSoCodeId').value = s.id;
+        }
+      }
+      document.getElementById('editSoComboDropdown').style.display = 'none';
+    }
+
+    function clearEditSoCode() {
+      selectEditSoCode('');
+    }
+
+    // Attach events
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('editSoComboInput');
+      if(input) {
+        input.addEventListener('focus', () => {
+          editSoCodeFilter = '';
+          document.getElementById('editSoComboDropdown').style.display = 'flex';
+          renderEditSoList();
+        });
+        input.addEventListener('input', (e) => {
+          editSoCodeFilter = e.target.value;
+          if(editSoCodeSelectedId) {
+             const s = invSoCodeOptions.find(x => x.id === editSoCodeSelectedId);
+             if(s && e.target.value !== `${s.so_number || s.id} — ${s.partner_customer || '—'}`) {
+                 editSoCodeSelectedId = null; document.getElementById('editSoCodeId').value = '';
+             }
+          }
+          document.getElementById('editSoComboDropdown').style.display = 'flex';
+          renderEditSoList();
+        });
+        document.getElementById('editSoComboClear').addEventListener('click', (e) => {
+          e.stopPropagation(); clearEditSoCode();
+        });
+        document.addEventListener('click', (e) => {
+          const combo = document.getElementById('editSoCombo');
+          if (combo && !combo.contains(e.target)) document.getElementById('editSoComboDropdown').style.display = 'none';
+        });
+      }
+    });
+
+  </script>
+  <script>
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

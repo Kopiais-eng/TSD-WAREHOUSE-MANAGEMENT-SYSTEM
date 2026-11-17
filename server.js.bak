@@ -1,0 +1,1800 @@
+require('dotenv').config();
+const express = require('express');
+const https = require('https');
+const { Pool } = require('pg');
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const nodemailer = require('nodemailer');
+const { ImapFlow } = require('imapflow');
+const { simpleParser } = require('mailparser');
+
+// ---------- EMAIL ----------
+const SMTP_USER = process.env.SMTP_USER || 'your-email@gmail.com';
+const SMTP_PASS = process.env.SMTP_PASS || 'your-app-password-here';
+const EMAIL_FROM = process.env.EMAIL_FROM || `"TSD WMS" <${SMTP_USER}>`;
+
+const IMAP_HOST = process.env.IMAP_HOST || 'mail.examedia.my';
+const IMAP_PORT = parseInt(process.env.IMAP_PORT || '993');
+const IMAP_USER = process.env.IMAP_USER || SMTP_USER;
+const IMAP_PASS = process.env.IMAP_PASS || SMTP_PASS;
+
+const emailTransporter = nodemailer.createTransport({
+  host:   process.env.SMTP_HOST || 'smtp.gmail.com',
+  port:   parseInt(process.env.SMTP_PORT || '465'),
+  secure: true,                    // 465 = SSL
+  auth: { user: SMTP_USER, pass: SMTP_PASS },
+  tls: { rejectUnauthorized: false }   // internal mail servers often use self-signed certs
+});
+
+const app = express();
+const port = 3000;
+
+// ---------- DATABASE ----------
+const pool = new Pool({
+  host: '172.16.2.70',
+  port: 5432,
+  user: 'postgres',
+  password: 'abcd123',
+  database: 'postgres'
+});
+
+// ---------- UPLOAD: quotations ----------
+const uploadDir = path.join(__dirname, 'uploads', 'quotations');
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + ext);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg','image/png','image/webp','image/gif','application/pdf'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only images and PDFs are allowed.'));
+  }
+});
+
+// ---------- UPLOAD: email attachments ----------
+const emailUploadDir = path.join(__dirname, 'uploads', 'emails');
+const emailReceivedDir = path.join(emailUploadDir, 'received');
+fs.mkdirSync(emailUploadDir,   { recursive: true });
+fs.mkdirSync(emailReceivedDir, { recursive: true });
+
+const emailStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, emailUploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + ext);
+  }
+});
+
+const emailUpload = multer({
+  storage: emailStorage,
+  limits: { fileSize: 15 * 1024 * 1024 }   // 15 MB per file
+});
+
+// ---------- MIDDLEWARE ----------
+app.use(express.json({ limit: '2mb' }));
+app.use(express.static('public'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use(session({
+  secret: 'your_super_secret_key_change_this_in_production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 24 * 60 * 60 * 1000, httpOnly: true, secure: true }
+}));
+
+// ---------- AUTH MIDDLEWARE ----------
+function isAuthenticated(req, res, next) {
+  if (req.session.userId) return next();
+  res.status(401).json({ error: 'Unauthorized. Please log in.' });
+}
+
+function hasRole(requiredRoles) {
+  return (req, res, next) => {
+    if (req.session.role === 'admin' || requiredRoles.includes(req.session.role)) return next();
+    res.status(403).json({ error: 'Forbidden. Insufficient permissions.' });
+  };
+}
+
+// ---------- AUDIT LOG HELPER ----------
+async function logAudit(req, {
+  entityType, entityId, action, itemPart, itemSerial, itemClient,
+  inventoryId, requestId, loanId, qty, fromStatus, toStatus, notes
+}) {
+  try {
+    await pool.query(
+      `INSERT INTO audit_log
+        (user_id, user_name, user_role, entity_type, entity_id, action,
+         item_part, item_serial, item_client, inventory_id, request_id, loan_id,
+         qty, from_status, to_status, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+      [
+        req.session.userId || null,
+        req.session.fullName || 'Unknown',
+        req.session.role || null,
+        entityType, entityId || null, action,
+        itemPart || null, itemSerial || null, itemClient || null,
+        inventoryId || null, requestId || null, loanId || null,
+        qty || null, fromStatus || null, toStatus || null, notes || null
+      ]
+    );
+  } catch (err) {
+    console.error('logAudit failed:', err.message);
+  }
+}
+
+// =============================================================
+// EMAIL HELPERS
+// =============================================================
+
+// In-memory rate limit for IMAP sync — avoid hammering the mail server
+let lastSyncAt = 0;
+const SYNC_COOLDOWN_MS = 30 * 1000;   // 30 seconds
+
+// Build the standard subject line for a request's RFQ email
+function buildRfqSubject(request) {
+  const part = request.part || 'item';
+  return `[REQ-${request.request_id}] Request for Quotation — ${part}`;
+}
+
+// Extract [REQ-XX] from a subject → returns request_id or null
+function parseRequestIdFromSubject(subject) {
+  if (!subject) return null;
+  const m = String(subject).match(/\[REQ-(\d+)\]/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+// Build a plain-text preview from a body string
+function makePreview(body, max = 200) {
+  if (!body) return '';
+  const clean = String(body).replace(/\s+/g, ' ').trim();
+  return clean.length > max ? clean.slice(0, max) + '…' : clean;
+}
+
+// Sync inbox from IMAP. Fetches newest messages, parses, links to requests by subject tag.
+async function syncInbox({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && (now - lastSyncAt) < SYNC_COOLDOWN_MS) {
+    return { skipped: true, reason: 'cooldown', lastSync: new Date(lastSyncAt).toISOString() };
+  }
+  lastSyncAt = now;
+
+  const client = new ImapFlow({
+    host: IMAP_HOST,
+    port: IMAP_PORT,
+    secure: true,
+    auth: { user: IMAP_USER, pass: IMAP_PASS },
+    logger: false
+  });
+
+  const summary = { fetched: 0, matched: 0, unmatched: 0, errors: [] };
+
+  try {
+    await client.connect();
+    const lock = await client.getMailboxLock('INBOX');
+
+    try {
+      // Fetch last 40 messages (newest first via seq range)
+      const status = client.mailbox;
+      const total  = status.exists || 0;
+      if (total === 0) return summary;
+
+      const start = Math.max(1, total - 39);
+      const range = `${start}:*`;
+
+      for await (const msg of client.fetch(range, { source: true, envelope: true, uid: true })) {
+        try {
+          const parsed = await simpleParser(msg.source);
+          const messageId = parsed.messageId || `no-id-${msg.uid}`;
+
+          // Skip if already in DB
+          const existing = await pool.query(
+            'SELECT email_id FROM email_log WHERE message_id = $1',
+            [messageId]
+          );
+          if (existing.rows.length > 0) continue;
+
+          summary.fetched++;
+
+          const fromAddr = parsed.from?.value?.[0]?.address || 'unknown';
+          const toAddr   = parsed.to?.value?.[0]?.address   || IMAP_USER;
+          const subject  = parsed.subject || '(no subject)';
+          const bodyText = parsed.text || parsed.html || '';
+          const bodyPrev = makePreview(bodyText);
+          const reqId    = parseRequestIdFromSubject(subject);
+
+          // Save attachments to disk
+          const attachments = [];
+          if (parsed.attachments && parsed.attachments.length) {
+            for (const att of parsed.attachments) {
+              try {
+                const safeName = (att.filename || 'attachment').replace(/[^\w.\-]/g, '_');
+                const fname = `${Date.now()}-${Math.round(Math.random()*1e6)}-${safeName}`;
+                const fpath = path.join(emailReceivedDir, fname);
+                fs.writeFileSync(fpath, att.content);
+                attachments.push({
+                  filename: att.filename || fname,
+                  stored: `/uploads/emails/received/${fname}`,
+                  size: att.size || att.content?.length || 0,
+                  mimetype: att.contentType || 'application/octet-stream'
+                });
+              } catch (e) {
+                console.error('Attachment save failed:', e.message);
+              }
+            }
+          }
+
+          await pool.query(
+            `INSERT INTO email_log
+              (request_id, direction, from_email, to_email, subject,
+               body_preview, body_full, message_id, in_reply_to, attachments, is_read)
+             VALUES ($1,'received',$2,$3,$4,$5,$6,$7,$8,$9::jsonb,FALSE)`,
+            [
+              reqId, fromAddr, toAddr, subject,
+              bodyPrev, bodyText.slice(0, 50000),
+              messageId, parsed.inReplyTo || null,
+              JSON.stringify(attachments)
+            ]
+          );
+
+          if (reqId) summary.matched++; else summary.unmatched++;
+        } catch (e) {
+          summary.errors.push(e.message);
+        }
+      }
+    } finally {
+      lock.release();
+    }
+  } catch (e) {
+    summary.errors.push('IMAP: ' + e.message);
+  } finally {
+    try { await client.logout(); } catch (_) {}
+  }
+
+  return summary;
+}
+
+// =============================================================
+// AUTH ROUTES
+// =============================================================
+
+app.get('/api/me', async (req, res) => {
+  if (!req.session.userId) return res.json({ user: null });
+  try {
+    const result = await pool.query(
+      'SELECT user_id, username, role, full_name, email FROM users WHERE user_id = $1',
+      [req.session.userId]
+    );
+    if (result.rows.length === 0) { req.session.destroy(); return res.json({ user: null }); }
+    res.json({ user: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required.' });
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid username or password.' });
+    const user = result.rows[0];
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) return res.status(401).json({ error: 'Invalid username or password.' });
+    req.session.userId = user.user_id;
+    req.session.role = user.role;
+    req.session.fullName = user.full_name;
+    res.json({ message: 'Login successful', user: { user_id: user.user_id, username: user.username, role: user.role, full_name: user.full_name } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/register', async (req, res) => {
+  const { username, password, full_name, email, role, department } = req.body;
+  if (!username || !password || !full_name || !role) return res.status(400).json({ error: 'Username, password, full name, and role are required.' });
+  const validRoles = ['admin', 'manager', 'finance', 'technician', 'user'];
+  if (!validRoles.includes(role)) return res.status(400).json({ error: 'Invalid role selected.' });
+  try {
+    const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (existing.rows.length > 0) return res.status(400).json({ error: 'Username already taken.' });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      `INSERT INTO users (username, password_hash, role, full_name, email, department)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING user_id`,
+      [username, hashedPassword, role, full_name, email || null, department || null]
+    );
+    res.status(201).json({ message: 'User registered successfully!', userId: result.rows[0].user_id });
+  } catch (err) { res.status(500).json({ error: 'Server error during registration.' }); }
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) return res.status(500).json({ error: 'Logout failed.' });
+    res.json({ message: 'Logout successful' });
+  });
+});
+
+// =============================================================
+// NOTIFICATIONS
+// =============================================================
+async function notify(userIds, { type, message, link }) {
+  if (!Array.isArray(userIds)) userIds = [userIds];
+  userIds = userIds.filter(id => id != null);
+  if (userIds.length === 0) return;
+  try {
+    const values = userIds.map(uid => [uid, type || 'info', message, link || null]);
+    const placeholders = values.map((_, i) =>
+      `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`
+    ).join(', ');
+    const flat = values.flat();
+    await pool.query(
+      `INSERT INTO notifications (user_id, type, message, link)
+       VALUES ${placeholders}`,
+      flat
+    );
+  } catch (err) {
+    console.error('notify() failed:', err.message);
+  }
+}
+
+async function getAdminIds() {
+  try {
+    const r = await pool.query("SELECT user_id FROM users WHERE role = 'admin'");
+    return r.rows.map(x => x.user_id);
+  } catch (e) { return []; }
+}
+async function getManagerIds() {
+  try {
+    const r = await pool.query("SELECT user_id FROM users WHERE role = 'manager'");
+    return r.rows.map(x => x.user_id);
+  } catch (e) { return []; }
+}
+async function getFinanceIds() {
+  try {
+    const r = await pool.query("SELECT user_id FROM users WHERE role = 'finance'");
+    return r.rows.map(x => x.user_id);
+  } catch (e) { return []; }
+}
+
+app.get('/api/notifications', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT notification_id, type, message, link, is_read, created_at
+       FROM notifications WHERE user_id = $1
+       ORDER BY created_at DESC LIMIT 30`,
+      [req.session.userId]
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM notifications
+       WHERE user_id = $1 AND is_read = FALSE`,
+      [req.session.userId]
+    );
+    res.json({ count: result.rows[0].count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid notification ID.' });
+  try {
+    const result = await pool.query(
+      `UPDATE notifications SET is_read = TRUE
+       WHERE notification_id = $1 AND user_id = $2 RETURNING *`,
+      [id, req.session.userId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Not found.' });
+    res.json({ message: 'Marked as read.', notification: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/notifications/read-all', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE notifications SET is_read = TRUE
+       WHERE user_id = $1 AND is_read = FALSE`,
+      [req.session.userId]
+    );
+    res.json({ message: 'All marked as read.', updated: result.rowCount });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/notifications/test', isAuthenticated, hasRole(['admin']), async (req, res) => {
+  const { message, link } = req.body;
+  await notify(req.session.userId, {
+    type: 'test',
+    message: message || 'Test notification — hello!',
+    link: link || null
+  });
+  res.json({ message: 'Test notification created.' });
+});
+
+// =============================================================
+// SETTINGS ROUTES
+// =============================================================
+app.get('/api/user/preferences', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT user_id, username, full_name, email, role, department,
+              employee_code, designation, cost_center,
+              direct_manager, reporting_manager, phone,
+              pref_theme, pref_accent, pref_compact, pref_rows_per_page,
+              pref_date_format, pref_email_loans, pref_email_requests
+       FROM users WHERE user_id = $1`,
+      [req.session.userId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found.' });
+    const u = result.rows[0];
+    res.json({
+            user: {
+        user_id: u.user_id,
+        username: u.username,
+        full_name: u.full_name,
+        email: u.email,
+        role: u.role,
+        department: u.department,
+        employee_code: u.employee_code,
+        designation: u.designation,
+        cost_center: u.cost_center,
+        direct_manager: u.direct_manager,
+        reporting_manager: u.reporting_manager,
+        phone: u.phone
+      },
+      preferences: {
+        theme: u.pref_theme || 'dark',
+        accent: u.pref_accent || 'red',
+        compact: u.pref_compact || false,
+        rows_per_page: u.pref_rows_per_page || 25,
+        date_format: u.pref_date_format || 'DD/MM/YYYY',
+        email_loans: u.pref_email_loans ?? true,
+        email_requests: u.pref_email_requests ?? true
+      }
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/user/preferences', isAuthenticated, async (req, res) => {
+  const { theme, accent, compact, rows_per_page, date_format, email_loans, email_requests } = req.body;
+  const validThemes   = ['dark', 'light'];
+  const validAccents  = ['red', 'blue', 'green', 'yellow', 'purple'];
+  const validFormats  = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'];
+  const validRows     = [10, 25, 50, 100];
+  if (theme && !validThemes.includes(theme))       return res.status(400).json({ error: 'Invalid theme.' });
+  if (accent && !validAccents.includes(accent))    return res.status(400).json({ error: 'Invalid accent.' });
+  if (date_format && !validFormats.includes(date_format)) return res.status(400).json({ error: 'Invalid date format.' });
+  if (rows_per_page && !validRows.includes(parseInt(rows_per_page))) return res.status(400).json({ error: 'Invalid rows per page.' });
+  try {
+    const result = await pool.query(
+      `UPDATE users SET
+         pref_theme          = COALESCE($1, pref_theme),
+         pref_accent         = COALESCE($2, pref_accent),
+         pref_compact        = COALESCE($3, pref_compact),
+         pref_rows_per_page  = COALESCE($4, pref_rows_per_page),
+         pref_date_format    = COALESCE($5, pref_date_format),
+         pref_email_loans    = COALESCE($6, pref_email_loans),
+         pref_email_requests = COALESCE($7, pref_email_requests)
+       WHERE user_id = $8
+       RETURNING pref_theme, pref_accent, pref_compact, pref_rows_per_page,
+                 pref_date_format, pref_email_loans, pref_email_requests`,
+      [
+        theme || null, accent || null,
+        typeof compact === 'boolean' ? compact : null,
+        rows_per_page ? parseInt(rows_per_page) : null,
+        date_format || null,
+        typeof email_loans === 'boolean' ? email_loans : null,
+        typeof email_requests === 'boolean' ? email_requests : null,
+        req.session.userId
+      ]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found.' });
+    const u = result.rows[0];
+    res.json({
+      message: 'Preferences saved.',
+      preferences: {
+        theme: u.pref_theme, accent: u.pref_accent, compact: u.pref_compact,
+        rows_per_page: u.pref_rows_per_page, date_format: u.pref_date_format,
+        email_loans: u.pref_email_loans, email_requests: u.pref_email_requests
+      }
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/change-password', isAuthenticated, async (req, res) => {
+  const { current_password, new_password, confirm_password } = req.body;
+  if (!current_password || !new_password) return res.status(400).json({ error: 'Current and new password are required.' });
+  if (new_password.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+  if (confirm_password !== undefined && new_password !== confirm_password) return res.status(400).json({ error: 'New passwords do not match.' });
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE user_id = $1', [req.session.userId]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found.' });
+    const user = result.rows[0];
+    const match = await bcrypt.compare(current_password, user.password_hash);
+    if (!match) return res.status(401).json({ error: 'Current password is incorrect.' });
+    if (await bcrypt.compare(new_password, user.password_hash)) return res.status(400).json({ error: 'New password must be different from current password.' });
+    const newHash = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE user_id = $2', [newHash, req.session.userId]);
+    console.log(`✅ Password changed for user ${user.username}`);
+    res.json({ message: 'Password updated successfully.' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ---------- PATCH update own profile ----------
+// ---------- PATCH update own profile ----------
+app.patch('/api/user/profile', isAuthenticated, async (req, res) => {
+  const {
+    full_name, email, phone,
+    employee_code, designation,
+    department, cost_center,
+    direct_manager, reporting_manager
+  } = req.body;
+
+  const isAdmin = (req.session.role === 'admin');
+  const userId  = req.session.userId;
+
+  try {
+    // Non-admin: the 4 restricted fields must match existing values only
+    if (!isAdmin) {
+      const restrictedFields = [
+        { field: 'department',        value: department },
+        { field: 'cost_center',       value: cost_center },
+        { field: 'direct_manager',    value: direct_manager },
+        { field: 'reporting_manager', value: reporting_manager }
+      ];
+
+      for (const { field, value } of restrictedFields) {
+        if (!value) continue;   // empty = no change, allowed
+        const check = await pool.query(
+          `SELECT 1 FROM users WHERE ${field} = $1 LIMIT 1`, [value]
+        );
+        if (check.rows.length === 0) {
+          return res.status(403).json({ error: `Only admin can create new ${field.replace('_', ' ')} values.` });
+        }
+      }
+    }
+
+    const result = await pool.query(
+      `UPDATE users SET
+         full_name          = COALESCE($1, full_name),
+         email              = COALESCE($2, email),
+         phone              = COALESCE($3, phone),
+         employee_code      = COALESCE($4, employee_code),
+         designation        = COALESCE($5, designation),
+         department         = COALESCE($6, department),
+         cost_center        = COALESCE($7, cost_center),
+         direct_manager     = COALESCE($8, direct_manager),
+         reporting_manager  = COALESCE($9, reporting_manager)
+       WHERE user_id = $10
+       RETURNING user_id, username, full_name, email, role, department,
+                 employee_code, designation, cost_center,
+                 direct_manager, reporting_manager, phone`,
+      [
+        full_name       || null,
+        email           || null,
+        phone           || null,
+        employee_code   || null,
+        designation     || null,
+        department      !== undefined ? (department || null)        : null,
+        cost_center     !== undefined ? (cost_center || null)       : null,
+        direct_manager  !== undefined ? (direct_manager || null)    : null,
+        reporting_manager !== undefined ? (reporting_manager || null) : null,
+        userId
+      ]
+    );
+
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found.' });
+
+    if (full_name) req.session.fullName = full_name;
+
+    res.json({ message: 'Profile updated.', user: result.rows[0] });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =============================================================
+// OPTIONS (departments / cost centers / managers)
+// Admin can add and delete. Everyone can read.
+// =============================================================
+
+function optionsRoutes(table, label) {
+  // GET — list all
+  app.get(`/api/options/${label}`, isAuthenticated, async (req, res) => {
+    try {
+      const r = await pool.query(`SELECT id, name FROM ${table} ORDER BY name`);
+      res.json(r.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // POST — add (admin only)
+  app.post(`/api/options/${label}`, isAuthenticated, hasRole(['admin']), async (req, res) => {
+    const name = (req.body.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Name is required.' });
+    try {
+      const r = await pool.query(
+        `INSERT INTO ${table} (name) VALUES ($1)
+         ON CONFLICT (name) DO NOTHING
+         RETURNING id, name`,
+        [name]
+      );
+      if (r.rows.length === 0) return res.status(400).json({ error: 'Value already exists.' });
+      res.json(r.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // DELETE (admin only) — checks if in use first
+  app.delete(`/api/options/${label}/:id`, isAuthenticated, hasRole(['admin']), async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID.' });
+
+    try {
+      // Find the option name
+      const found = await pool.query(`SELECT name FROM ${table} WHERE id = $1`, [id]);
+      if (found.rows.length === 0) return res.status(404).json({ error: 'Option not found.' });
+      const name = found.rows[0].name;
+
+      // Warn if it's in use (but allow delete)
+      const columnMap = {
+        option_departments:  'department',
+        option_cost_centers: 'cost_center',
+        option_managers:     'direct_manager'   // also check reporting_manager
+      };
+      const col = columnMap[table];
+      let usageCheck;
+      if (table === 'option_managers') {
+        usageCheck = await pool.query(
+          `SELECT COUNT(*)::int AS c FROM users WHERE direct_manager = $1 OR reporting_manager = $1`,
+          [name]
+        );
+      } else {
+        usageCheck = await pool.query(
+          `SELECT COUNT(*)::int AS c FROM users WHERE ${col} = $1`,
+          [name]
+        );
+      }
+      const inUse = usageCheck.rows[0].c;
+
+      await pool.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+
+      res.json({
+        message: 'Option deleted.',
+        used_by: inUse   // informational — value stays on users, just removed from dropdown
+      });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+}
+
+optionsRoutes('option_departments',  'departments');
+optionsRoutes('option_cost_centers', 'cost-centers');
+optionsRoutes('option_managers',     'managers');
+
+// =============================================================
+// INVENTORY ROUTES
+// =============================================================
+app.get('/api/inventory', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM inventory ORDER BY inventory_id');
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/inventory', isAuthenticated, hasRole(['admin', 'manager', 'technician']), async (req, res) => {
+  const { client, category, part, serial, description, qty, rack } = req.body;
+  if (!client || !category || !part || !serial || !description || qty === undefined || !rack) {
+    return res.status(400).json({ error: 'All fields are required.' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO inventory (client, category, part, serial, description, qty, rack)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [client, category, part, serial, description, qty, rack]
+    );
+    const adminIds = await getAdminIds();
+    await notify(adminIds, {
+      type: 'inventory_added',
+      message: `${req.session.fullName || 'User'} added new stock: ${part} (${category}) × ${qty} at ${client}`,
+      link: '/inventory.html'
+    });
+    await logAudit(req, {
+      entityType: 'inventory', entityId: result.rows[0].inventory_id,
+      action: 'inventory.added',
+      itemPart: part, itemSerial: serial, itemClient: client,
+      inventoryId: result.rows[0].inventory_id, qty,
+      toStatus: 'in_stock', notes: `${category} — Rack ${rack}`
+    });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/inventory/:id/takeout', isAuthenticated, hasRole(['admin', 'manager', 'technician']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid inventory ID.' });
+  try {
+    const current = await pool.query('SELECT * FROM inventory WHERE inventory_id = $1', [id]);
+    if (current.rows.length === 0) return res.status(404).json({ error: 'Item not found.' });
+    const item = current.rows[0];
+    const currentQty = parseInt(item.qty) || 0;
+    if (currentQty <= 0) return res.status(400).json({ error: 'Item is out of stock.' });
+    let result;
+    if (currentQty === 1) {
+      await pool.query('DELETE FROM inventory WHERE inventory_id = $1', [id]);
+      result = { ...item, qty: 0, deleted: true };
+    } else {
+      const update = await pool.query('UPDATE inventory SET qty = qty - 1 WHERE inventory_id = $1 RETURNING *', [id]);
+      result = update.rows[0];
+    }
+    const adminIds = await getAdminIds();
+    await notify(adminIds, {
+      type: 'inventory_takeout',
+      message: `${req.session.fullName || 'User'} took out 1× ${item.part} — remaining ${result.qty ?? 0}`,
+      link: '/inventory.html'
+    });
+    await logAudit(req, {
+      entityType: 'inventory', entityId: id,
+      action: 'inventory.taken_out',
+      itemPart: item.part, itemSerial: item.serial, itemClient: item.client,
+      inventoryId: id, qty: 1,
+      fromStatus: 'in_stock',
+      toStatus: currentQty === 1 ? 'empty' : 'in_stock',
+      notes: `Qty ${currentQty} → ${result.qty ?? 0}`
+    });
+    res.json({
+      message: currentQty === 1 ? `Item "${item.part}" removed.` : `1 unit taken out. New qty: ${result.qty}`,
+      item: result
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/inventory/:id/assign', isAuthenticated, hasRole(['admin', 'technician']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid inventory ID.' });
+  const { hostname, ip_address, rack_position, warranty_expiry, assigned_engineer } = req.body;
+  try {
+    const check = await pool.query('SELECT * FROM inventory WHERE inventory_id = $1', [id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: 'Item not found.' });
+    const result = await pool.query(
+      `UPDATE inventory SET hostname = $1, ip_address = $2, rack_position = $3,
+       warranty_expiry = $4, assigned_engineer = $5, asset_status = 'assigned'
+       WHERE inventory_id = $6 RETURNING *`,
+      [hostname, ip_address, rack_position, warranty_expiry, assigned_engineer, id]
+    );
+    await logAudit(req, {
+      entityType: 'inventory', entityId: id,
+      action: 'inventory.assigned',
+      itemPart: result.rows[0].part,
+      itemSerial: result.rows[0].serial,
+      itemClient: result.rows[0].client,
+      inventoryId: id,
+      toStatus: 'assigned',
+      notes: `Assigned to ${assigned_engineer || 'engineer'}`
+    });
+    res.json({ message: 'Asset assigned.', item: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// LOAN ROUTES
+// =============================================================
+app.get('/api/loans', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT l.*, u.username AS issued_by_name
+       FROM loans l LEFT JOIN users u ON l.issued_by = u.user_id
+       ORDER BY (l.status = 'active') DESC, l.due_date ASC, l.loan_id DESC`
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/loans', isAuthenticated, hasRole(['admin']), async (req, res) => {
+  const { inventory_id, customer_name, contact_person, contact_phone, contact_email, qty, due_date, rate, notes } = req.body;
+  if (!customer_name || !qty || !due_date) return res.status(400).json({ error: 'Customer name, quantity, and due date are required.' });
+  if (!inventory_id) return res.status(400).json({ error: 'Inventory item is required.' });
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query('BEGIN');
+    const invRes = await dbClient.query('SELECT * FROM inventory WHERE inventory_id = $1 FOR UPDATE', [inventory_id]);
+    if (invRes.rows.length === 0) { await dbClient.query('ROLLBACK'); return res.status(404).json({ error: 'Inventory item not found.' }); }
+    const item = invRes.rows[0];
+    const stock = parseInt(item.qty) || 0;
+    if (qty > stock) { await dbClient.query('ROLLBACK'); return res.status(400).json({ error: `Only ${stock} in stock.` }); }
+    const rateNum = rate ? parseFloat(rate) : null;
+    const total = rateNum ? rateNum * qty : null;
+    const loanRes = await dbClient.query(
+      `INSERT INTO loans (inventory_id, customer_name, contact_person, contact_phone, contact_email,
+        part, serial, description, qty, due_date, rate, total_charge, notes, issued_by, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'active')
+       RETURNING *`,
+      [inventory_id, customer_name, contact_person || null, contact_phone || null, contact_email || null,
+       item.part, item.serial, item.description, qty, due_date, rateNum, total, notes || null, req.session.userId]
+    );
+    await dbClient.query('UPDATE inventory SET qty = qty - $1 WHERE inventory_id = $2', [qty, inventory_id]);
+    await dbClient.query('COMMIT');
+    const adminIds = await getAdminIds();
+    await notify(adminIds, {
+      type: 'loan_created',
+      message: `New loan #${loanRes.rows[0].loan_id} to ${customer_name}: ${item.part} × ${qty} (due ${due_date})`,
+      link: '/loans.html'
+    });
+    await logAudit(req, {
+      entityType: 'loan', entityId: loanRes.rows[0].loan_id,
+      action: 'loan.created',
+      itemPart: item.part, itemSerial: item.serial, itemClient: item.client,
+      inventoryId: inventory_id, loanId: loanRes.rows[0].loan_id,
+      qty, toStatus: 'active',
+      notes: `Loan to ${customer_name} — due ${due_date}`
+    });
+    res.json(loanRes.rows[0]);
+  } catch (err) {
+    await dbClient.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { dbClient.release(); }
+});
+
+app.patch('/api/loans/:id/return', isAuthenticated, hasRole(['admin']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid loan ID.' });
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query('BEGIN');
+    const loanRes = await dbClient.query('SELECT * FROM loans WHERE loan_id = $1 FOR UPDATE', [id]);
+    if (loanRes.rows.length === 0) { await dbClient.query('ROLLBACK'); return res.status(404).json({ error: 'Loan not found.' }); }
+    const loan = loanRes.rows[0];
+    if (loan.status === 'returned') { await dbClient.query('ROLLBACK'); return res.status(400).json({ error: 'Loan already returned.' }); }
+    if (loan.inventory_id) {
+      await dbClient.query('UPDATE inventory SET qty = qty + $1 WHERE inventory_id = $2', [loan.qty, loan.inventory_id]);
+    }
+    await dbClient.query(`UPDATE loans SET status = 'returned', returned_date = CURRENT_DATE WHERE loan_id = $1`, [id]);
+    await dbClient.query('COMMIT');
+    const adminIds = await getAdminIds();
+    await notify(adminIds, {
+      type: 'loan_returned',
+      message: `Loan #${id} returned: ${loan.part} × ${loan.qty} (customer: ${loan.customer_name})`,
+      link: '/loans.html'
+    });
+    await logAudit(req, {
+      entityType: 'loan', entityId: id,
+      action: 'loan.returned',
+      itemPart: loan.part, itemSerial: loan.serial,
+      inventoryId: loan.inventory_id, loanId: id,
+      qty: loan.qty, fromStatus: 'active', toStatus: 'returned',
+      notes: `Returned by ${loan.customer_name}`
+    });
+    res.json({ message: 'Loan returned. Inventory restored.' });
+  } catch (err) {
+    await dbClient.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { dbClient.release(); }
+});
+
+app.patch('/api/loans/:id/pay', isAuthenticated, hasRole(['admin', 'finance']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid loan ID.' });
+  try {
+    const result = await pool.query(`UPDATE loans SET payment_status = 'paid' WHERE loan_id = $1 RETURNING *`, [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Loan not found.' });
+    const targets = [...new Set([...(await getAdminIds()), ...(await getFinanceIds())])];
+    await notify(targets, {
+      type: 'loan_paid',
+      message: `Loan #${id} marked as PAID by ${req.session.fullName || 'user'}`,
+      link: '/loans.html'
+    });
+    await logAudit(req, {
+      entityType: 'loan', entityId: id,
+      action: 'loan.paid',
+      itemPart: result.rows[0].part, itemSerial: result.rows[0].serial,
+      inventoryId: result.rows[0].inventory_id, loanId: id,
+      qty: result.rows[0].qty, toStatus: 'paid', notes: 'Payment recorded'
+    });
+    res.json({ message: 'Payment marked as paid.', loan: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// REQUESTS ROUTES
+// =============================================================
+app.get('/api/requests', isAuthenticated, async (req, res) => {
+  try {
+    let query = `
+      SELECT r.*, u1.username AS requester_name, u2.username AS approver_name,
+             v.name AS vendor_name, v.email AS vendor_email, v.contact_person AS vendor_contact,
+             q.price AS price, q.quotation_image_url AS quotation_image_url,
+             q.delivery_estimate_days AS delivery_estimate_days
+      FROM requests r
+      LEFT JOIN users u1 ON r.requested_by = u1.user_id
+      LEFT JOIN users u2 ON r.approved_by = u2.user_id
+      LEFT JOIN vendors v ON r.vendor_id = v.vendor_id
+      LEFT JOIN LATERAL (
+        SELECT price, quotation_image_url, delivery_estimate_days
+        FROM quotations WHERE request_id = r.request_id
+        ORDER BY created_at DESC LIMIT 1
+      ) q ON TRUE
+    `;
+    if (req.session.role !== 'admin' && req.session.role !== 'manager' && req.session.role !== 'finance') {
+      query += ` WHERE r.requested_by = ${req.session.userId}`;
+    }
+    query += ` ORDER BY r.created_at DESC`;
+    const result = await pool.query(query);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/requests', isAuthenticated, async (req, res) => {
+  const { client, category, part, serial, description, qty, rack,
+          justification, priority, required_date, request_type, vendor_id, status, inventory_id } = req.body;
+  if (!client || !category || !part || !qty) return res.status(400).json({ error: 'Client, Category, Asset Tag, and Quantity are required.' });
+  if (request_type === 'external' && !vendor_id) return res.status(400).json({ error: 'Please select a vendor.' });
+  if (request_type === 'external' && !['admin', 'manager'].includes(req.session.role)) return res.status(403).json({ error: 'Only managers or admins can create external requests.' });
+  const isExternal = (request_type === 'external');
+  const cleanSerial = isExternal ? null : (serial || null);
+  const allowedStatuses = ['pending', 'approved'];
+  const finalStatus = allowedStatuses.includes(status) ? status : 'pending';
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query('BEGIN');
+    if (inventory_id) {
+      const invRes = await dbClient.query('SELECT qty FROM inventory WHERE inventory_id = $1 FOR UPDATE', [inventory_id]);
+      if (invRes.rows.length === 0) { await dbClient.query('ROLLBACK'); return res.status(404).json({ error: 'Linked inventory item not found.' }); }
+      const stock = parseInt(invRes.rows[0].qty) || 0;
+      if (qty > stock) { await dbClient.query('ROLLBACK'); return res.status(400).json({ error: `Only ${stock} in stock.` }); }
+      await dbClient.query('UPDATE inventory SET qty = qty - $1 WHERE inventory_id = $2', [qty, inventory_id]);
+    }
+    const result = await dbClient.query(
+      `INSERT INTO requests (client, category, part, serial, description, qty, rack, justification, priority,
+        required_date, requested_by, status, request_type, vendor_id, inventory_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+      [client, category, part, cleanSerial, description || null, qty, rack || null,
+       justification || null, priority || 'medium', required_date || null,
+       req.session.userId, finalStatus, request_type || 'internal', vendor_id || null, inventory_id || null]
+    );
+    await dbClient.query('COMMIT');
+    const targets = [...new Set([...(await getAdminIds()), ...(await getManagerIds())])];
+    await notify(targets, {
+      type: 'request_created',
+      message: `New ${request_type || 'internal'} request #${result.rows[0].request_id} from ${req.session.fullName || 'user'}: ${part} × ${qty}`,
+      link: '/requests.html'
+    });
+    await logAudit(req, {
+      entityType: 'request', entityId: result.rows[0].request_id,
+      action: 'request.created',
+      itemPart: part, itemSerial: cleanSerial, itemClient: client,
+      inventoryId: inventory_id || null, requestId: result.rows[0].request_id,
+      qty, toStatus: finalStatus,
+      notes: `${request_type || 'internal'} request — ${category}`
+    });
+    res.json(result.rows[0]);
+  } catch (err) {
+    await dbClient.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { dbClient.release(); }
+});
+
+app.patch('/api/requests/:id/approve', isAuthenticated, hasRole(['admin', 'manager']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid request ID.' });
+  try {
+    const requestResult = await pool.query(
+      `SELECT r.*, v.name AS vendor_name
+       FROM requests r LEFT JOIN vendors v ON r.vendor_id = v.vendor_id
+       WHERE r.request_id = $1`, [id]
+    );
+    if (requestResult.rows.length === 0) return res.status(404).json({ error: 'Request not found.' });
+    const request = requestResult.rows[0];
+    if (request.status !== 'pending') return res.status(400).json({ error: `Request already ${request.status}.` });
+    if (req.session.role !== 'admin' && request.requested_by === req.session.userId) return res.status(403).json({ error: 'You cannot approve your own request.' });
+    await pool.query(
+      `UPDATE requests SET status = 'approved', approved_by = $1, approved_at = NOW() WHERE request_id = $2`,
+      [req.session.userId, id]
+    );
+    if (request.requested_by) {
+      await notify(request.requested_by, {
+        type: 'request_approved',
+        message: `Your request #${id} (${request.part} × ${request.qty}) was APPROVED.`,
+        link: '/requests.html'
+      });
+    }
+    if (request.request_type === 'external') {
+      const targets = [...new Set([...(await getAdminIds()), ...(await getFinanceIds())])];
+      await notify(targets, {
+        type: 'quotation_needed',
+        message: `External request #${id} (${request.part} × ${request.qty}) approved — upload quotation for ${request.vendor_name || 'vendor'}.`,
+        link: '/finance.html'
+      });
+    }
+    await logAudit(req, {
+      entityType: 'request', entityId: id,
+      action: 'request.approved',
+      itemPart: request.part, itemSerial: request.serial, itemClient: request.client,
+      inventoryId: request.inventory_id, requestId: id,
+      qty: request.qty, fromStatus: 'pending', toStatus: 'approved',
+      notes: request.vendor_name ? `Vendor: ${request.vendor_name}` : null
+    });
+    res.json({ message: 'Request approved.', request: { ...request, status: 'approved' } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/requests/:id/reject', isAuthenticated, hasRole(['admin', 'manager']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { reason } = req.body;
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid request ID.' });
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query('BEGIN');
+    const requestResult = await dbClient.query('SELECT * FROM requests WHERE request_id = $1', [id]);
+    if (requestResult.rows.length === 0) { await dbClient.query('ROLLBACK'); return res.status(404).json({ error: 'Request not found.' }); }
+    const request = requestResult.rows[0];
+    if (request.status !== 'pending') { await dbClient.query('ROLLBACK'); return res.status(400).json({ error: `Request already ${request.status}.` }); }
+    if (request.inventory_id) {
+      await dbClient.query('UPDATE inventory SET qty = qty + $1 WHERE inventory_id = $2', [request.qty, request.inventory_id]);
+    }
+    await dbClient.query(
+      `UPDATE requests SET status = 'rejected', approved_by = $1, approved_at = NOW(), rejected_reason = $2 WHERE request_id = $3`,
+      [req.session.userId, reason || 'No reason provided.', id]
+    );
+    await dbClient.query('COMMIT');
+    if (request.requested_by) {
+      await notify(request.requested_by, {
+        type: 'request_rejected',
+        message: `Your request #${id} (${request.part}) was REJECTED: ${reason || 'No reason provided.'}`,
+        link: '/requests.html'
+      });
+    }
+    await logAudit(req, {
+      entityType: 'request', entityId: id,
+      action: 'request.rejected',
+      itemPart: request.part, itemSerial: request.serial, itemClient: request.client,
+      inventoryId: request.inventory_id, requestId: id,
+      qty: request.qty, fromStatus: 'pending', toStatus: 'rejected',
+      notes: reason || 'No reason provided.'
+    });
+    res.json({ message: 'Request rejected.', request: { ...request, status: 'rejected' } });
+  } catch (err) {
+    await dbClient.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { dbClient.release(); }
+});
+
+app.patch('/api/requests/:id/status', isAuthenticated, hasRole(['admin', 'finance', 'manager']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { status } = req.body;
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid request ID.' });
+  if (!status) return res.status(400).json({ error: 'Status is required.' });
+  try {
+    const before = await pool.query('SELECT status, part, serial, client, qty, inventory_id FROM requests WHERE request_id = $1', [id]);
+    const result = await pool.query(`UPDATE requests SET status = $1 WHERE request_id = $2 RETURNING *`, [status, id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Request not found.' });
+    const reqRow = result.rows[0];
+    const oldStatus = before.rows[0]?.status || null;
+    await logAudit(req, {
+      entityType: 'request', entityId: id,
+      action: 'request.status_changed',
+      itemPart: reqRow.part, itemSerial: reqRow.serial, itemClient: reqRow.client,
+      inventoryId: reqRow.inventory_id, requestId: id,
+      qty: reqRow.qty, fromStatus: oldStatus, toStatus: status
+    });
+    res.json({ message: `Status updated to ${status}.`, request: reqRow });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/requests/:id/manager-decision', isAuthenticated, hasRole(['admin', 'manager']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { decision, reason } = req.body;
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid request ID.' });
+  if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ error: 'Decision must be "approve" or "reject".' });
+  try {
+    let result;
+    if (decision === 'approve') {
+      result = await pool.query(`UPDATE requests SET status = 'pending_purchase', approved_by = $1, approved_at = NOW() WHERE request_id = $2 RETURNING *`, [req.session.userId, id]);
+    } else {
+      result = await pool.query(`UPDATE requests SET status = 'rejected', approved_by = $1, approved_at = NOW(), rejected_reason = $2 WHERE request_id = $3 RETURNING *`, [req.session.userId, reason || 'No reason provided.', id]);
+    }
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Request not found.' });
+    const reqRow = result.rows[0];
+    const targets = [...new Set([...(await getAdminIds()), ...(await getFinanceIds()), reqRow.requested_by].filter(Boolean))];
+    const msg = decision === 'approve'
+      ? `Request #${id} (${reqRow.part}) quotation APPROVED by ${req.session.fullName || 'a manager'} — proceeding to purchase.`
+      : `Request #${id} (${reqRow.part}) quotation REJECTED by ${req.session.fullName || 'a manager'}.`;
+    await notify(targets, {
+      type: decision === 'approve' ? 'quotation_approved' : 'quotation_rejected',
+      message: msg, link: '/finance.html'
+    });
+    await logAudit(req, {
+      entityType: 'request', entityId: id,
+      action: decision === 'approve' ? 'request.quotation_approved' : 'request.quotation_rejected',
+      itemPart: reqRow.part, itemSerial: reqRow.serial, itemClient: reqRow.client,
+      inventoryId: reqRow.inventory_id, requestId: id, qty: reqRow.qty,
+      fromStatus: 'pending_manager_approval',
+      toStatus: decision === 'approve' ? 'pending_purchase' : 'rejected',
+      notes: reason || null
+    });
+    res.json({ message: `Request #${id} ${decision}d.`, request: reqRow });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/requests/:id/user-confirm', isAuthenticated, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid request ID.' });
+  try {
+    const r = await pool.query('SELECT * FROM requests WHERE request_id = $1', [id]);
+    if (r.rows.length === 0) return res.status(404).json({ error: 'Request not found.' });
+    const request = r.rows[0];
+    if (req.session.role !== 'admin' && request.requested_by !== req.session.userId) return res.status(403).json({ error: 'Only the requester can confirm.' });
+    if (request.status !== 'delivered') return res.status(400).json({ error: `Request is "${request.status}".` });
+    const result = await pool.query(`UPDATE requests SET status = 'completed' WHERE request_id = $1 RETURNING *`, [id]);
+    const targets = [...new Set([...(await getAdminIds()), ...(await getFinanceIds())])];
+    await notify(targets, {
+      type: 'request_completed',
+      message: `Request #${id} (${request.part}) COMPLETED — user confirmed receipt.`,
+      link: '/finance.html'
+    });
+    await logAudit(req, {
+      entityType: 'request', entityId: id,
+      action: 'request.completed',
+      itemPart: request.part, itemSerial: request.serial, itemClient: request.client,
+      inventoryId: request.inventory_id, requestId: id, qty: request.qty,
+      fromStatus: 'delivered', toStatus: 'completed'
+    });
+    res.json({ message: 'Receipt confirmed.', request: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// EMAIL ROUTES (NEW)
+// =============================================================
+
+// List threads: one row per external request that has email activity or needs it
+app.get('/api/emails/threads', isAuthenticated, hasRole(['admin', 'finance', 'manager']), async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        r.request_id,
+        r.part,
+        r.category,
+        r.qty,
+        r.client,
+        r.status,
+        r.created_at,
+        v.name  AS vendor_name,
+        v.email AS vendor_email,
+        u.username AS requester_name,
+        (SELECT COUNT(*)::int FROM email_log e WHERE e.request_id = r.request_id AND e.direction='sent')     AS sent_count,
+        (SELECT COUNT(*)::int FROM email_log e WHERE e.request_id = r.request_id AND e.direction='received') AS received_count,
+        (SELECT COUNT(*)::int FROM email_log e WHERE e.request_id = r.request_id AND e.direction='received' AND e.is_read = FALSE) AS unread_count,
+        (SELECT MAX(created_at) FROM email_log e WHERE e.request_id = r.request_id) AS last_activity
+      FROM requests r
+      LEFT JOIN vendors v ON r.vendor_id = v.vendor_id
+      LEFT JOIN users u ON r.requested_by = u.user_id
+      WHERE r.request_type = 'external'
+        AND r.vendor_id IS NOT NULL
+      ORDER BY
+        (SELECT COUNT(*) FROM email_log e WHERE e.request_id = r.request_id AND e.direction='received' AND e.is_read = FALSE) DESC,
+        r.created_at DESC
+      LIMIT 200
+    `);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Get full email thread for a single request
+app.get('/api/emails/thread/:requestId', isAuthenticated, hasRole(['admin', 'finance', 'manager']), async (req, res) => {
+  const requestId = parseInt(req.params.requestId);
+  if (isNaN(requestId)) return res.status(400).json({ error: 'Invalid request ID.' });
+  try {
+    const reqInfo = await pool.query(`
+      SELECT r.*, v.name AS vendor_name, v.email AS vendor_email, v.contact_person AS vendor_contact,
+             u.username AS requester_name
+      FROM requests r
+      LEFT JOIN vendors v ON r.vendor_id = v.vendor_id
+      LEFT JOIN users u ON r.requested_by = u.user_id
+      WHERE r.request_id = $1
+    `, [requestId]);
+    if (reqInfo.rows.length === 0) return res.status(404).json({ error: 'Request not found.' });
+
+    const emails = await pool.query(`
+      SELECT email_id, direction, from_email, to_email, subject,
+             body_preview, body_full, attachments, user_name, is_read, created_at
+      FROM email_log
+      WHERE request_id = $1
+      ORDER BY created_at ASC
+    `, [requestId]);
+
+    res.json({
+      request: reqInfo.rows[0],
+      emails: emails.rows
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Send an email to a vendor (with attachments), tagged with the request ID
+app.post('/api/emails/send',
+  isAuthenticated,
+  hasRole(['admin', 'finance']),
+  emailUpload.array('attachments', 5),
+  async (req, res) => {
+    const { request_id, to, subject, body } = req.body;
+    if (!request_id || !to || !subject || !body) {
+      return res.status(400).json({ error: 'request_id, to, subject, and body are required.' });
+    }
+
+    const requestId = parseInt(request_id);
+    if (isNaN(requestId)) return res.status(400).json({ error: 'Invalid request_id.' });
+
+    try {
+      const check = await pool.query(
+        'SELECT r.request_id, r.part FROM requests r WHERE r.request_id = $1',
+        [requestId]
+      );
+      if (check.rows.length === 0) return res.status(404).json({ error: 'Request not found.' });
+
+      // Force the [REQ-XX] tag into the subject so replies can be matched
+      let finalSubject = subject.trim();
+      const tag = `[REQ-${requestId}]`;
+      if (!finalSubject.includes(tag)) finalSubject = `${tag} ${finalSubject}`;
+
+      const attachments = (req.files || []).map(f => ({
+        filename: f.originalname,
+        path: f.path,
+        contentType: f.mimetype
+      }));
+
+      const info = await emailTransporter.sendMail({
+        from: EMAIL_FROM,
+        to,
+        subject: finalSubject,
+        text: body,
+        attachments
+      });
+
+      const storedAttachments = attachments.map(a => ({
+        filename: a.filename,
+        stored: `/uploads/emails/${path.basename(a.path)}`,
+        size: fs.existsSync(a.path) ? fs.statSync(a.path).size : 0,
+        mimetype: a.contentType
+      }));
+
+      await pool.query(
+        `INSERT INTO email_log
+          (request_id, direction, from_email, to_email, subject,
+           body_preview, body_full, message_id, attachments, user_id, user_name, is_read)
+         VALUES ($1,'sent',$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,TRUE)`,
+        [
+          requestId,
+          SMTP_USER,
+          to,
+          finalSubject,
+          makePreview(body),
+          body.slice(0, 50000),
+          info.messageId || null,
+          JSON.stringify(storedAttachments),
+          req.session.userId,
+          req.session.fullName || 'User'
+        ]
+      );
+
+      await logAudit(req, {
+        entityType: 'request',
+        entityId: requestId,
+        action: 'email.sent',
+        requestId,
+        notes: `To: ${to} — ${finalSubject}`
+      });
+
+      res.json({ message: `Email sent to ${to}`, messageId: info.messageId });
+    } catch (err) {
+      console.error('Email send failed:', err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// Manual sync trigger
+app.post('/api/emails/sync', isAuthenticated, hasRole(['admin', 'finance', 'manager']), async (req, res) => {
+  try {
+    const summary = await syncInbox({ force: true });
+    res.json({ message: 'Sync complete.', ...summary });
+  } catch (err) {
+    console.error('Sync error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mark email as read
+app.patch('/api/emails/:id/read', isAuthenticated, hasRole(['admin', 'finance', 'manager']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid email ID.' });
+  try {
+    const result = await pool.query(
+      'UPDATE email_log SET is_read = TRUE WHERE email_id = $1 RETURNING *',
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Not found.' });
+    res.json({ message: 'Marked as read.', email: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Unread count for the sidebar badge
+    // Unread count for the sidebar badge
+app.get('/api/emails/unread-count', isAuthenticated, hasRole(['admin', 'finance', 'manager']), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM email_log
+       WHERE direction = 'received'
+         AND is_read = FALSE
+         AND request_id IS NOT NULL`
+    );
+    res.json({ count: result.rows[0].count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// LEGACY: keep the old send endpoint for compatibility
+// =============================================================
+app.post('/api/requests/:id/send-quotation-email', isAuthenticated, hasRole(['admin', 'finance']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid request ID.' });
+  const { recipient, subject, body } = req.body;
+  if (!recipient || !subject || !body) return res.status(400).json({ error: 'Recipient, subject, and body are required.' });
+  try {
+    const check = await pool.query('SELECT request_id FROM requests WHERE request_id = $1', [id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: 'Request not found.' });
+    await emailTransporter.sendMail({ from: EMAIL_FROM, to: recipient, subject, text: body });
+    res.json({ message: `Email sent to ${recipient}` });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// CLIENTS (derived from inventory)
+// =============================================================
+app.get('/api/clients', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT DISTINCT client FROM inventory
+       WHERE client IS NOT NULL AND TRIM(client) <> ''
+       ORDER BY client`
+    );
+    res.json(result.rows.map(r => r.client));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// AUDIT LOG ROUTES
+// =============================================================
+app.get('/api/audit', isAuthenticated, async (req, res) => {
+  try {
+    if (!['admin', 'manager', 'finance'].includes(req.session.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions.' });
+    }
+    const { entity_type, action, user_id, inventory_id, serial, part, from, to, limit } = req.query;
+    const conditions = [];
+    const values = [];
+    let i = 1;
+    if (entity_type)  { conditions.push(`entity_type = $${i++}`);  values.push(entity_type); }
+    if (action)       { conditions.push(`action = $${i++}`);       values.push(action); }
+    if (user_id)      { conditions.push(`user_id = $${i++}`);      values.push(parseInt(user_id)); }
+    if (inventory_id) { conditions.push(`inventory_id = $${i++}`); values.push(parseInt(inventory_id)); }
+    if (serial)       { conditions.push(`item_serial ILIKE $${i++}`); values.push(`%${serial}%`); }
+    if (part)         { conditions.push(`item_part ILIKE $${i++}`);   values.push(`%${part}%`); }
+    if (from)         { conditions.push(`created_at >= $${i++}`); values.push(from); }
+    if (to)           { conditions.push(`created_at <= $${i++}`); values.push(to); }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const lim = Math.min(parseInt(limit) || 200, 500);
+    const result = await pool.query(
+      `SELECT * FROM audit_log ${where} ORDER BY created_at DESC LIMIT ${lim}`,
+      values
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/audit/actions', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT DISTINCT action FROM audit_log ORDER BY action`);
+    res.json(result.rows.map(r => r.action));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// VENDOR
+// =============================================================
+app.get('/api/vendors', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM vendors ORDER BY name');
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/vendors', isAuthenticated, hasRole(['admin', 'manager', 'finance']), async (req, res) => {
+  const { name, contact_person, email, phone, performance_rating } = req.body;
+  if (!name || !contact_person || !email || !phone) {
+    return res.status(400).json({ error: 'Name, contact person, email, and phone are required.' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO vendors (name, contact_person, email, phone, performance_rating)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [name, contact_person, email, phone, performance_rating || null]
+    );
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// QUOTATIONS
+// =============================================================
+app.get('/api/quotations/request/:requestId', isAuthenticated, async (req, res) => {
+  const requestId = parseInt(req.params.requestId);
+  if (isNaN(requestId)) return res.status(400).json({ error: 'Invalid request ID.' });
+  try {
+    const result = await pool.query(
+      `SELECT q.*, v.name as vendor_name FROM quotations q
+       JOIN vendors v ON q.vendor_id = v.vendor_id
+       WHERE q.request_id = $1 ORDER BY q.price ASC`, [requestId]
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/quotations', isAuthenticated, hasRole(['admin', 'finance']), upload.single('quotation_image'), async (req, res) => {
+  const { request_id, vendor_id, price, delivery_estimate_days, valid_until, notes } = req.body;
+  if (!request_id || !vendor_id || !price) return res.status(400).json({ error: 'Request ID, Vendor ID, and Price are required.' });
+  if (!req.file) return res.status(400).json({ error: 'Quotation file is required.' });
+  const quotation_image_url = `/uploads/quotations/${req.file.filename}`;
+  try {
+    const result = await pool.query(
+      `INSERT INTO quotations (request_id, vendor_id, price, delivery_estimate_days, valid_until, notes, quotation_image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [request_id, vendor_id, price, delivery_estimate_days || null, valid_until || null, notes || null, quotation_image_url]
+    );
+    await pool.query(`UPDATE requests SET status = 'pending_manager_approval' WHERE request_id = $1`, [request_id]);
+    const reqInfo = await pool.query('SELECT part, serial, client, qty, inventory_id FROM requests WHERE request_id = $1', [request_id]);
+    const r = reqInfo.rows[0] || {};
+    const targets = [...new Set([...(await getAdminIds()), ...(await getManagerIds())])];
+    await notify(targets, {
+      type: 'quotation_uploaded',
+      message: `Quotation uploaded for request #${request_id} — RM ${price}. Waiting for manager approval.`,
+      link: '/finance.html'
+    });
+    await logAudit(req, {
+      entityType: 'quotation', entityId: result.rows[0].quotation_id,
+      action: 'quotation.uploaded',
+      itemPart: r.part, itemSerial: r.serial, itemClient: r.client,
+      inventoryId: r.inventory_id, requestId: request_id, qty: r.qty,
+      fromStatus: 'approved', toStatus: 'pending_manager_approval',
+      notes: `RM ${price}`
+    });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/quotations/:id/accept', isAuthenticated, hasRole(['admin', 'finance']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid quotation ID.' });
+  try {
+    const quoteResult = await pool.query('SELECT * FROM quotations WHERE quotation_id = $1', [id]);
+    if (quoteResult.rows.length === 0) return res.status(404).json({ error: 'Quotation not found.' });
+    const quote = quoteResult.rows[0];
+    const requestResult = await pool.query('SELECT * FROM requests WHERE request_id = $1', [quote.request_id]);
+    if (requestResult.rows.length === 0) return res.status(404).json({ error: 'Request not found.' });
+    const request = requestResult.rows[0];
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const po_number = `PO-${timestamp}-${random}`;
+    const poResult = await pool.query(
+      `INSERT INTO purchase_orders (po_number, request_id, vendor_id, quotation_id, total_amount, expected_delivery)
+       VALUES ($1, $2, $3, $4, $5, NOW() + ($6 || ' days')::INTERVAL) RETURNING *`,
+      [po_number, request.request_id, quote.vendor_id, quote.quotation_id, quote.price, quote.delivery_estimate_days || 7]
+    );
+    await pool.query('UPDATE quotations SET status = $1 WHERE quotation_id = $2', ['accepted', id]);
+    await pool.query('UPDATE requests SET status = $1 WHERE request_id = $2', ['ordered', request.request_id]);
+    await logAudit(req, {
+      entityType: 'po', entityId: poResult.rows[0].po_id,
+      action: 'po.created',
+      itemPart: request.part, itemSerial: request.serial, itemClient: request.client,
+      inventoryId: request.inventory_id, requestId: request.request_id, qty: request.qty,
+      toStatus: 'ordered', notes: `PO ${po_number} — RM ${quote.price}`
+    });
+    res.json({ message: `PO ${po_number} created.`, purchase_order: poResult.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// PURCHASE ORDERS
+// =============================================================
+app.get('/api/purchase-orders', isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT po.*, v.name as vendor_name, r.part as request_part, u.username as requested_by
+       FROM purchase_orders po
+       JOIN vendors v ON po.vendor_id = v.vendor_id
+       JOIN requests r ON po.request_id = r.request_id
+       LEFT JOIN users u ON r.requested_by = u.user_id
+       ORDER BY po.issued_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/purchase-orders/:id/status', isAuthenticated, hasRole(['admin', 'finance']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { status } = req.body;
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid PO ID.' });
+  if (!status) return res.status(400).json({ error: 'Status is required.' });
+  try {
+    const result = await pool.query(
+      `UPDATE purchase_orders SET status = $1, delivered_at = CASE WHEN $1 = 'received' THEN NOW() ELSE delivered_at END
+       WHERE po_id = $2 RETURNING *`, [status, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'PO not found.' });
+    res.json({ message: `PO status updated to ${status}.`, purchase_order: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/purchase-orders/:id/receive', isAuthenticated, hasRole(['admin', 'technician']), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid PO ID.' });
+  try {
+    const poResult = await pool.query('SELECT * FROM purchase_orders WHERE po_id = $1', [id]);
+    if (poResult.rows.length === 0) return res.status(404).json({ error: 'Purchase Order not found.' });
+    const po = poResult.rows[0];
+    if (po.status === 'received') return res.status(400).json({ error: 'Already received.' });
+    const updateResult = await pool.query(
+      `UPDATE purchase_orders SET status = 'received', received_at = NOW() WHERE po_id = $1 RETURNING *`, [id]
+    );
+    await pool.query(`UPDATE requests SET status = 'received' WHERE request_id = $1`, [po.request_id]);
+    const reqInfo = await pool.query('SELECT part, serial, client, qty, inventory_id FROM requests WHERE request_id = $1', [po.request_id]);
+    const r = reqInfo.rows[0] || {};
+    await logAudit(req, {
+      entityType: 'po', entityId: id,
+      action: 'po.received',
+      itemPart: r.part, itemSerial: r.serial, itemClient: r.client,
+      inventoryId: r.inventory_id, requestId: po.request_id, qty: r.qty,
+      fromStatus: po.status, toStatus: 'received',
+      notes: `PO ${po.po_number} received`
+    });
+    res.json({ message: `PO ${po.po_number} received.`, purchase_order: updateResult.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// REPORTS ROUTES
+// =============================================================
+function isReportViewer(req, res, next) {
+  if (['admin', 'manager', 'finance'].includes(req.session.role)) return next();
+  res.status(403).json({ error: 'Insufficient permissions.' });
+}
+
+// GET /api/reports/overview — top-level numbers + 2 charts
+app.get('/api/reports/overview', isAuthenticated, isReportViewer, async (req, res) => {
+  try {
+    const [inv, loans, reqs, byCategory, reqsByStatus, loansSummary] = await Promise.all([
+      pool.query(`SELECT
+        COUNT(*) FILTER (WHERE qty > 0)::int              AS items,
+        COALESCE(SUM(qty), 0)::int                        AS units,
+        COUNT(DISTINCT client) FILTER (WHERE client IS NOT NULL AND TRIM(client) <> '')::int AS clients,
+        COUNT(DISTINCT category) FILTER (WHERE category IS NOT NULL)::int AS categories,
+        COUNT(*) FILTER (WHERE qty > 0 AND qty <= 5)::int AS low_stock
+        FROM inventory`),
+      pool.query(`SELECT
+        COUNT(*) FILTER (WHERE status = 'active')::int                          AS active,
+        COUNT(*) FILTER (WHERE status = 'active' AND due_date < CURRENT_DATE)::int AS overdue,
+        COUNT(*) FILTER (WHERE status = 'returned')::int                        AS returned
+        FROM loans`),
+      pool.query(`SELECT
+        COUNT(*)::int                                          AS total,
+        COUNT(*) FILTER (WHERE status = 'pending')::int        AS pending,
+        COUNT(*) FILTER (WHERE status = 'approved')::int       AS approved,
+        COUNT(*) FILTER (WHERE status = 'rejected')::int       AS rejected,
+        COUNT(*) FILTER (WHERE status = 'completed')::int      AS completed,
+        COUNT(*) FILTER (WHERE request_type = 'external')::int AS external,
+        COUNT(*) FILTER (WHERE request_type = 'internal')::int AS internal
+        FROM requests`),
+      pool.query(`SELECT category, COALESCE(SUM(qty), 0)::int AS units
+        FROM inventory
+        WHERE qty > 0 AND category IS NOT NULL
+        GROUP BY category ORDER BY units DESC`),
+      pool.query(`SELECT status, COUNT(*)::int AS count
+        FROM requests GROUP BY status ORDER BY count DESC`),
+      pool.query(`SELECT
+        COUNT(*)::int AS total,
+        COALESCE(SUM(total_charge), 0)::float AS revenue
+        FROM loans WHERE status = 'active'`)
+    ]);
+
+    res.json({
+      inventory:            inv.rows[0],
+      loans:                loans.rows[0],
+      requests:             reqs.rows[0],
+      inventory_by_category: byCategory.rows,
+      requests_by_status:   reqsByStatus.rows,
+      loans_summary:        loansSummary.rows[0]
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/reports/inventory — full inventory breakdown
+app.get('/api/reports/inventory', isAuthenticated, isReportViewer, async (req, res) => {
+  const { client, category } = req.query;
+  const conds = [];
+  const values = [];
+  let i = 1;
+  if (client)   { conds.push(`client = $${i++}`);   values.push(client); }
+  if (category) { conds.push(`category = $${i++}`); values.push(category); }
+  const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+
+  try {
+    const [totals, byCategory, byClient, lowStock] = await Promise.all([
+      pool.query(`SELECT
+        COUNT(*)::int                              AS items,
+        COALESCE(SUM(qty), 0)::int                 AS units,
+        COUNT(DISTINCT client)::int                AS clients,
+        COUNT(DISTINCT category)::int              AS categories,
+        COUNT(*) FILTER (WHERE qty <= 5)::int      AS low_stock
+        FROM inventory ${where}`, values),
+      pool.query(`SELECT category,
+        COUNT(*)::int                              AS items,
+        COALESCE(SUM(qty), 0)::int                 AS units,
+        COUNT(DISTINCT client)::int                AS clients,
+        COUNT(*) FILTER (WHERE qty <= 5)::int      AS low_stock
+        FROM inventory ${where}
+        GROUP BY category ORDER BY units DESC`, values),
+      pool.query(`SELECT client,
+        COUNT(*)::int                              AS items,
+        COALESCE(SUM(qty), 0)::int                 AS units,
+        COUNT(DISTINCT category)::int              AS categories
+        FROM inventory ${where}
+        GROUP BY client ORDER BY units DESC`, values),
+      pool.query(`SELECT inventory_id, client, category, part, serial, description, qty, rack
+        FROM inventory WHERE qty > 0 AND qty <= 5
+        ORDER BY qty ASC, part ASC LIMIT 30`)
+    ]);
+
+    res.json({
+      totals:      totals.rows[0],
+      by_category: byCategory.rows,
+      by_client:   byClient.rows,
+      low_stock:   lowStock.rows
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/reports/requests — request analytics
+app.get('/api/reports/requests', isAuthenticated, isReportViewer, async (req, res) => {
+  const { from, to, client, category, request_type, status } = req.query;
+  const conds = [];
+  const values = [];
+  let i = 1;
+  if (from)         { conds.push(`r.created_at >= $${i++}`);   values.push(from); }
+  if (to)           { conds.push(`r.created_at <= $${i++}`);   values.push(to); }
+  if (client)       { conds.push(`r.client = $${i++}`);        values.push(client); }
+  if (category)     { conds.push(`r.category = $${i++}`);      values.push(category); }
+  if (request_type) { conds.push(`r.request_type = $${i++}`);  values.push(request_type); }
+  if (status)       { conds.push(`r.status = $${i++}`);        values.push(status); }
+  const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+
+  try {
+    const [totals, byStatus, byType, byPriority, monthly, topRequesters] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS total FROM requests r ${where}`, values),
+      pool.query(`SELECT r.status, COUNT(*)::int AS count FROM requests r ${where} GROUP BY r.status ORDER BY count DESC`, values),
+      pool.query(`SELECT r.request_type, COUNT(*)::int AS count FROM requests r ${where} GROUP BY r.request_type`, values),
+      pool.query(`SELECT r.priority, COUNT(*)::int AS count FROM requests r ${where} GROUP BY r.priority`, values),
+      pool.query(`SELECT TO_CHAR(r.created_at, 'Mon YY') AS month,
+                         TO_CHAR(r.created_at, 'YYYY-MM') AS month_key,
+                         COUNT(*)::int AS count
+        FROM requests r ${where}
+        GROUP BY month, month_key
+        ORDER BY month_key DESC LIMIT 6`, values),
+      pool.query(`SELECT u.username AS requester, COUNT(r.request_id)::int AS count
+        FROM requests r LEFT JOIN users u ON r.requested_by = u.user_id
+        ${where}
+        GROUP BY u.username ORDER BY count DESC LIMIT 10`, values)
+    ]);
+
+    res.json({
+      totals:         totals.rows[0],
+      by_status:      byStatus.rows,
+      by_type:        byType.rows,
+      by_priority:    byPriority.rows,
+      monthly:        monthly.rows.reverse(),
+      top_requesters: topRequesters.rows
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/reports/loans — loan analytics
+app.get('/api/reports/loans', isAuthenticated, isReportViewer, async (req, res) => {
+  const { from, to } = req.query;
+  const conds = [];
+  const values = [];
+  let i = 1;
+  if (from) { conds.push(`l.loan_date >= $${i++}`); values.push(from); }
+  if (to)   { conds.push(`l.loan_date <= $${i++}`); values.push(to); }
+  const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+
+  try {
+    const [totals, byStatus, topCustomers, monthly] = await Promise.all([
+      pool.query(`SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE l.status='active')::int AS active,
+        COUNT(*) FILTER (WHERE l.status='active' AND l.due_date < CURRENT_DATE)::int AS overdue,
+        COUNT(*) FILTER (WHERE l.status='returned')::int AS returned,
+        COUNT(*) FILTER (WHERE l.payment_status='paid')::int AS paid,
+        COALESCE(SUM(l.total_charge), 0)::float AS revenue
+        FROM loans l ${where}`, values),
+      pool.query(`SELECT l.status, COUNT(*)::int AS count FROM loans l ${where} GROUP BY l.status`, values),
+      pool.query(`SELECT l.customer_name, COUNT(*)::int AS loans,
+        COALESCE(SUM(l.total_charge), 0)::float AS total_charge
+        FROM loans l ${where}
+        GROUP BY l.customer_name
+        ORDER BY loans DESC LIMIT 10`, values),
+      pool.query(`SELECT TO_CHAR(l.loan_date, 'Mon YY') AS month,
+                         TO_CHAR(l.loan_date, 'YYYY-MM') AS month_key,
+                         COUNT(*)::int AS count
+        FROM loans l ${where}
+        GROUP BY month, month_key
+        ORDER BY month_key DESC LIMIT 6`, values)
+    ]);
+
+    res.json({
+      totals:        totals.rows[0],
+      by_status:     byStatus.rows,
+      top_customers: topCustomers.rows,
+      monthly:       monthly.rows.reverse()
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =============================================================
+// SEED ADMIN
+// =============================================================
+async function seedAdmin() {
+  try {
+    const check = await pool.query('SELECT * FROM users WHERE username = $1', ['admin']);
+    if (check.rows.length === 0) {
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      await pool.query(
+        'INSERT INTO users (username, password_hash, role, full_name) VALUES ($1, $2, $3, $4)',
+        ['admin', hashedPassword, 'admin', 'System Administrator']
+      );
+      console.log('✅ Default admin created: admin/admin123');
+    }
+  } catch (err) { console.error('Seed error:', err.message); }
+}
+seedAdmin();
+
+app.get('/api/user/theme', async (req, res) => {
+  if (!req.session.userId) return res.json({ theme: 'dark' });
+  try {
+    const result = await pool.query('SELECT pref_theme FROM users WHERE user_id = $1', [req.session.userId]);
+    const theme = result.rows[0]?.pref_theme || 'dark';
+    res.json({ theme });
+  } catch (err) { res.json({ theme: 'dark' }); }
+});
+
+// =============================================================
+// START
+// =============================================================
+const httpsOptions = {
+  key:  fs.readFileSync(path.join(__dirname, 'certificates', 'key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'certificates', 'cert.pem'))
+};
+
+https.createServer(httpsOptions, app).listen(port, '0.0.0.0', () => {
+  console.log(`✅ HTTPS running at https://172.16.2.70:${port}`);
+  console.log(`📧 SMTP: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT} as ${SMTP_USER}`);
+  console.log(`📥 IMAP: ${IMAP_HOST}:${IMAP_PORT} as ${IMAP_USER}`);
+});

@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | Requests</title>
+  <script src="/theme.js"></script>
+  <script src="/sidebar.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* ---------- THEME VARIABLES ---------- */
+    :root,
+    [data-theme="dark"] {
+      --bg-body:        #0b0e14;
+      --bg-sidebar:     #141a24;
+      --bg-main:        #0f131a;
+      --bg-card:        #181f2b;
+      --bg-elevated:    #1f2a3a;
+      --bg-header:      #111820;
+      --bg-hover:       #1a2332;
+
+      --border:         #2a3344;
+      --border-soft:    #252f3f;
+      --border-row:     #1f2a3a;
+
+      --text-primary:   #e2e8f0;
+      --text-secondary: #cbd5e0;
+      --text-muted:     #7a8ba3;
+      --text-dim:       #a0b3cc;
+
+      --accent:         #ef4444;
+      --accent-hover:   #dc2626;
+      --accent-text:    #ffffff;
+    }
+
+    [data-theme="light"] {
+      --bg-body:        #f1f5f9;
+      --bg-sidebar:     #ffffff;
+      --bg-main:        #f8fafc;
+      --bg-card:        #ffffff;
+      --bg-elevated:    #f1f5f9;
+      --bg-header:      #f8fafc;
+      --bg-hover:       #f1f5f9;
+
+      --border:         #e2e8f0;
+      --border-soft:    #e2e8f0;
+      --border-row:     #f1f5f9;
+
+      --text-primary:   #0f172a;
+      --text-secondary: #334155;
+      --text-muted:     #64748b;
+      --text-dim:       #475569;
+
+      --accent:         #ef4444;
+      --accent-hover:   #dc2626;
+      --accent-text:    #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background: var(--bg-body);
+      display: flex;
+      height: 100vh;
+      color: var(--text-primary);
+      overflow: hidden;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    /* ---------- SIDEBAR ---------- */
+    .sidebar {
+      width: 240px;
+      background: #dc2626;
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #b91c1c;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      transition: width 0.25s ease, padding 0.25s ease;
+    }
+
+    /* Brand block */
+    .sidebar-brand {
+      text-align: center;
+      padding-bottom: 22px;
+      margin-bottom: 22px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.788);
+      flex-shrink: 0;
+    }
+
+    .brand-logo-wrap {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 8px;
+      margin-bottom: 14px;
+      border: 1px solid transparent;
+      display: inline-block;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .brand-logo {
+      display: block;
+      width: 100%;
+      max-width: 160px;
+      height: auto;
+      margin: 0 auto;
+    }
+
+    .brand-divider {
+      width: 50px;
+      height: 2px;
+      background: #ffffff;
+      margin: 10px auto 12px;
+      border-radius: 1px;
+      opacity: 0.6;
+    }
+
+    .brand-dept {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      color: #ffffff;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .brand-tagline {
+      font-size: 9px;
+      color: rgb(255, 255, 255);
+      letter-spacing: 0.6px;
+      line-height: 1.5;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    /* Nav buttons */
+    .sidebar {
+  width: 240px;
+  background: #232c36;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #333333;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -8px;               /* negative so scrollbar doesn't clip buttons */
+  padding: 0 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 5px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Brand block */
+.sidebar-brand {
+  text-align: center;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.brand-logo-wrap {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+  display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.brand-divider {
+  width: 50px;
+  height: 2px;
+  background: #ffffff;
+  margin: 10px auto 12px;
+  border-radius: 1px;
+  opacity: 0.6;
+}
+
+.brand-dept {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.brand-tagline {
+  font-size: 9px;
+  color: #ffffff;
+  letter-spacing: 0.6px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Nav buttons */
+.side-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-bottom: 4px;
+  font-family: inherit;
+  position: relative;
+}
+
+/* Hover = red with 40% opacity */
+.side-btn:hover {
+  background: rgba(121, 121, 121, 0.4);
+  color: #ffffff;
+}
+
+/* Active button */
+.side-btn.active {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+.side-btn.active:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Icons */
+.side-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  stroke-width: 1.8;
+  color: inherit;
+  stroke: currentColor;
+}
+
+/* Logout button */
+.logout-btn {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 16px;
+  color: #ffffff;
+}
+
+.logout-btn:hover {
+  background: rgba(220, 38, 38, 0.4);
+  color: #ffffff;
+}
+
+    /* Collapsed state overrides */
+    .sidebar.collapsed {
+      width: 70px;
+      padding: 30px 10px;
+    }
+    .sidebar.collapsed .brand-dept,
+    .sidebar.collapsed .brand-tagline,
+    .sidebar.collapsed .brand-divider {
+      display: none;
+    }
+    .sidebar.collapsed .sidebar-brand {
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    .sidebar.collapsed .brand-logo-wrap {
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 0;
+    }
+    .sidebar.collapsed .brand-logo {
+      max-width: 44px;
+    }
+
+    /* ---------- MAIN ---------- */
+    .main { flex: 1; padding: 30px 40px; overflow-y: auto; background: var(--bg-main); display: flex; flex-direction: column; }
+    .main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+    .main-header h1 { font-size: 26px; font-weight: 300; letter-spacing: 1px; color: var(--text-primary); }
+    .main-header .header-right { display: flex; align-items: center; gap: 14px; }
+    .main-header .user-badge { background: var(--bg-elevated); padding: 8px 18px; border-radius: 30px; font-size: 14px; color: var(--text-dim); border: 1px solid var(--border); display: flex; align-items: center; gap: 6px; text-transform: uppercase; }
+    .main-header .user-badge span { color: inherit; }
+    .main-header .user-badge .role-tag { color: var(--text-primary); border-radius: 12px; font-size: 13.5px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+    /* ---------- STATS ---------- */
+    .stats-overview { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; }
+    .stat-item { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px 25px; flex: 1 0 auto; min-width: 100px; text-align: center; transition: 0.2s; cursor: pointer; }
+    .stat-item:hover { border-color: var(--border); background: var(--bg-elevated); }
+    .stat-item.active-filter { border-color: var(--accent); background: var(--bg-elevated); }
+    .stat-item .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+    .stat-item .stat-label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; margin-top: 2px; }
+    .stat-item.pending  .stat-value { color: #f59e0b; }
+    .stat-item.approved .stat-value { color: #4ade80; }
+    .stat-item.rejected .stat-value { color: var(--accent); }
+
+    /* ---------- TABLE CONTROLS ---------- */
+    .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .table-controls .entries { color: var(--text-muted); font-size: 14px; }
+    .table-controls .entries select { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+    .search-box { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .search-box input { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-size: 13px; min-width: 200px; }
+    .search-box input:focus { outline: none; border-color: var(--accent); }
+    .search-box button { background: var(--accent); border: none; padding: 6px 18px; border-radius: 6px; color: var(--accent-text); font-weight: 600; cursor: pointer; transition: 0.2s; font-family: inherit; }
+    .search-box button:hover { background: var(--accent-hover); }
+    .add-btn { background: #2a6b3a !important; color: #ffffff !important; display: flex; align-items: center; gap: 6px; }
+    .add-btn:hover { background: #3a8b4a !important; }
+
+    /* ---------- TABLE ---------- */
+    .table-wrapper { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-soft); overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .table-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+    .table-scroll::-webkit-scrollbar { width: 8px; }
+    .table-scroll::-webkit-scrollbar-track { background: var(--bg-header); }
+    .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1300px; }
+    th { text-align: left; padding: 14px 10px; background: var(--bg-header); color: var(--text-muted); text-transform: uppercase; font-size: 11px; letter-spacing: 1px; border-bottom: 2px solid var(--border-soft); position: sticky; top: 0; z-index: 10; white-space: nowrap; vertical-align: middle; }
+    td { padding: 12px 10px; border-bottom: 1px solid var(--border-row); color: var(--text-secondary); vertical-align: middle; }
+    tr:hover td { background: var(--bg-hover); }
+    .empty-row td { text-align: center; padding: 40px 16px; color: var(--text-muted); font-style: italic; font-size: 16px; }
+    th:nth-child(8), th:nth-child(9), td:nth-child(8), td:nth-child(9) { text-align: center !important; }
+
+    /* ---------- STATUS BADGES ---------- */
+    .status-badge { padding: 4px 14px; border-radius: 30px; font-size: 11px; font-weight: 600; text-transform: uppercase; display: inline-block; white-space: nowrap; letter-spacing: 0.3px; }
+    .status-badge.pending                    { background: #917935; color: #ffffff; }
+    .status-badge.approved                   { background: #2b8040; color: #ffffff; }
+    .status-badge.rejected                   { background: #9a3232; color: #ffffff; }
+    .status-badge.pending_manager_approval   { background: #917935; color: #ffffff; }
+    .status-badge.pending_purchase           { background: #917935; color: #ffffff; }
+    .status-badge.purchased                  { background: #2b8040; color: #ffffff; }
+    .status-badge.shipped                    { background: #4747b0; color: #ffffff; }
+    .status-badge.delivered                  { background: #2b8040; color: #ffffff; }
+    .status-badge.completed                  { background: #2b8040; color: #ffffff; }
+    .status-badge.ordered                    { background: #4747b0; color: #ffffff; }
+    .status-badge.received                   { background: #2b8040; color: #ffffff; }
+
+    /* ---------- PRIORITY BADGES ---------- */
+    .priority-badge { padding: 2px 10px; border-radius: 30px; font-size: 11px; font-weight: 600; display: inline-block; text-transform: uppercase; white-space: nowrap; }
+    .priority-badge.low      { background: #858484; color: #ffffff; }
+    .priority-badge.medium   { background: #afaf44; color: #ffffff; }
+    .priority-badge.high     { background: #b97a3a; color: #ffffff; }
+    .priority-badge.critical { background: #be3838; color: #ffffff; }
+
+    /* ---------- ACTION BUTTONS ---------- */
+    .btn-approve { background: #2a6b3a; border: none; padding: 4px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; color: #ffffff; cursor: pointer; transition: 0.2s; }
+    .btn-approve:hover { background: #3a8b4a; }
+    .btn-reject { background: #6b2a2a; border: none; padding: 4px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; color: #ffffff; cursor: pointer; transition: 0.2s; }
+    .btn-reject:hover { background: #8b3a3a; }
+    .btn-confirm { background: var(--accent); border: none; padding: 5px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; color: var(--accent-text); cursor: pointer; transition: 0.2s; }
+    .btn-confirm:hover { background: var(--accent-hover); }
+    .action-buttons { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+
+    /* ---------- MODAL ---------- */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 30px 35px; width: 550px; max-width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+    .modal-content h2 { color: var(--text-primary); font-weight: 300; letter-spacing: 1px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .modal-content .form-group { margin-bottom: 16px; display: flex; flex-direction: column; }
+    .modal-content .form-group label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .modal-content .form-group label .required { color: var(--accent); }
+    .modal-content .form-group input,
+    .modal-content .form-group select,
+    .modal-content .form-group textarea { background: var(--bg-body); color: var(--text-primary); border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; font-size: 14px; width: 100%; }
+    .modal-content .form-group textarea { resize: vertical; min-height: 60px; }
+    .modal-content .form-group select:disabled { opacity: 0.6; cursor: not-allowed; }
+    .modal-content .form-group input:focus,
+    .modal-content .form-group select:focus,
+    .modal-content .form-group textarea:focus { outline: none; border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px; }
+    .modal-actions button { padding: 10px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-family: inherit; }
+    .modal-actions .btn-save { background: var(--accent); color: var(--accent-text); }
+    .modal-actions .btn-save:hover { background: var(--accent-hover); }
+    .modal-actions .btn-cancel { background: var(--bg-elevated); color: var(--text-dim); }
+    .modal-actions .btn-cancel:hover { background: var(--border); color: var(--text-primary); }
+
+    /* Add to Cart button — blue */
+    .modal-actions .btn-cart {
+      background: #2563eb;
+      color: #ffffff;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .modal-actions .btn-cart:hover { background: #1d4ed8; }
+    .modal-actions .btn-cart:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Submit All button — green */
+    .modal-actions .btn-submit-all {
+      background: #2a6b3a;
+      color: #ffffff;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .modal-actions .btn-submit-all:hover { background: #3a8b4a; }
+    .modal-actions .btn-submit-all:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ---------- VENDOR ADD BUTTON ---------- */
+    .vendor-row { display: flex; gap: 8px; align-items: stretch; }
+    .vendor-row select { flex: 1; }
+    .btn-add-vendor { background: #2a6b3a; border: none; padding: 0 16px; border-radius: 8px; font-weight: 600; font-size: 13px; color: #ffffff; cursor: pointer; transition: 0.2s; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+    .btn-add-vendor:hover { background: #3a8b4a; }
+
+    /* ---------- CART SECTION ---------- */
+    .cart-section {
+      margin-top: 20px;
+      background: var(--bg-body);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .cart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .cart-header .cart-count {
+      background: var(--accent);
+      color: #fff;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+    }
+    .cart-list {
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .cart-list::-webkit-scrollbar { width: 6px; }
+    .cart-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .cart-empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-style: italic;
+    }
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-row);
+      font-size: 13px;
+    }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-item-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .cart-item-title {
+      color: var(--text-primary);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cart-item-title .type-icon { font-size: 14px; }
+    .cart-item-title .qty {
+      background: var(--bg-elevated);
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .cart-item-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cart-item-remove {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: #ef6b6b;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+    .cart-item-remove:hover { background: #2a1a1a; border-color: #ef6b6b; }
+
+    /* ---------- MOBILE ---------- */
+    @media (max-width: 768px) {
+      .sidebar { width: 70px; padding: 20px 10px; }
+      .sidebar .logo, .sidebar .logo-sub, .sidebar .side-btn span { display: none; }
+      .main { padding: 20px; }
+      .table-controls { flex-direction: column; align-items: stretch; }
+      .modal-content { padding: 20px; }
+      .stats-overview .stat-item { flex: 1 1 40%; }
+      .modal-actions { flex-direction: column-reverse; }
+      .modal-actions button { width: 100%; justify-content: center; }
+    }
+</style>
+<link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="sidebar-brand">
+      <div class="brand-logo-wrap">
+        <img src="img/logo.png" alt="Examedia" class="brand-logo" />
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-dept">TSD WMS</div>
+      <div class="brand-tagline">Technical Support Department</div>
+      <div class="brand-tagline">Warehouse Management System</div>
+    </div>
+
+    <!-- NAVIGATION -->
+    <div class="sidebar-nav">
+    <button class="side-btn" onclick="location.href='/dashboard.html'"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+    <button class="side-btn" onclick="location.href='/reports.html'"><i data-lucide="bar-chart-3"></i> <span>Reports</span></button>
+    <button class="side-btn" onclick="location.href='/inventory.html'"><i data-lucide="package"></i> <span>Inventory List</span></button>
+    <button class="side-btn" onclick="location.href='/assets.html'"><i data-lucide="hard-drive"></i> <span>Assets</span></button>
+    <button class="side-btn" onclick="location.href='/loans.html'"><i data-lucide="arrow-right-left"></i> <span>Loan Tracking</span></button>
+    <button class="side-btn" onclick="location.href='/requests.html'"><i data-lucide="inbox"></i> <span>Requests</span></button>
+    <button class="side-btn" onclick="location.href='/finance.html'"><i data-lucide="shopping-cart"></i> <span>Procurement</span></button>
+    <button class="side-btn active" onclick="location.href='/so-codes.html'"><i data-lucide="file-text"></i> <span>SO Codes</span></button>
+    <button class="side-btn" onclick="location.href='/audit.html'"><i data-lucide="search"></i> <span>Audit</span></button>
+    <button class="side-btn" onclick="location.href='/emails.html'"><i data-lucide="mail"></i> <span>Emails</span></button>
+    <button class="side-btn" onclick="location.href='/users.html'"><i data-lucide="users"></i> <span>Users</span></button>
+    <button class="side-btn" onclick="location.href='/settings.html'"><i data-lucide="settings"></i> <span>Settings</span></button>
+    <button class="side-btn logout-btn" onclick="logout()"><i data-lucide="log-out"></i> <span>Logout</span></button>
+     </div>
+
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+
+    <div class="main-header">
+      <h1 style="font-weight: bold;">Product Requests</h1>
+
+      <div class="header-right">
+        <div id="notificationBell"></div>
+
+        <div class="user-badge">
+          👤 Welcome, <span id="userName">Administrator</span>
+          <span class="role-tag" id="userRole"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-overview">
+      <div class="stat-item pending" onclick="applyStatusFilter('pending', this)">
+        <div class="stat-value" id="stat-pending">0</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-item approved" onclick="applyStatusFilter('approved', this)">
+        <div class="stat-value" id="stat-approved">0</div>
+        <div class="stat-label">Approved</div>
+      </div>
+      <div class="stat-item rejected" onclick="applyStatusFilter('rejected', this)">
+        <div class="stat-value" id="stat-rejected">0</div>
+        <div class="stat-label">Rejected</div>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="table-controls">
+      <div class="entries">
+        Show <select><option>25</option><option>50</option><option>100</option></select> entries
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="searchKeyword" placeholder="Search requests..." />
+        <button onclick="applyFilters()">Search</button>
+        <button class="add-btn" id="btnNewRequest" onclick="openNewRequestModal()">➕ New Request</button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrapper">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Client</th>
+              <th>Category</th>
+              <th>Asset Tag</th>
+              <th>Serial #</th>
+              <th>Qty</th>
+              <th>Priority</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Requested By</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="requestsBody">
+            <tr class="empty-row"><td colspan="12">📭 Loading requests...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ---------- NEW REQUEST MODAL ---------- -->
+  <div class="modal-overlay" id="newRequestModal">
+    <div class="modal-content">
+      <h2>📨 New Product Request</h2>
+      <p style="color: #7a8ba3; font-size: 13px; margin-bottom: 15px;">
+        Fields with <span style="color: #ef6b6b;">*</span> are required. Add multiple items to the cart before submitting.
+      </p>
+
+      <!-- REQUEST TYPE -->
+      <div class="form-group">
+        <label>Request Type <span class="required">*</span></label>
+        <select id="reqType" required onchange="toggleFieldVisibility()">
+          <option value="internal">🏢 Internal (Company Stock)</option>
+          <option value="external">🏭 External (Vendor Purchase)</option>
+        </select>
+        <small id="reqTypeHint" style="display:none; color:#7a8ba3; font-size:11px; margin-top:4px;">
+          🔒 Only <b>Managers</b> and <b>Admins</b> can create external requests.
+        </small>
+      </div>
+
+      <!-- VENDOR (external only) -->
+      <div class="form-group" id="vendorGroup" style="display: none;">
+        <label>Vendor <span class="required">*</span></label>
+        <div class="vendor-row">
+          <select id="reqVendor">
+            <option value="">-- Select Vendor --</option>
+          </select>
+          <button type="button" class="btn-add-vendor" id="addVendorBtn" onclick="openVendorModal()">➕ Add New</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Client / Site <span class="required">*</span></label>
+        <input type="text" id="reqClient" list="clientList" placeholder="e.g. BKR, HQ, Warehouse A" required autocomplete="off" />
+        <datalist id="clientList"></datalist>
+      </div>
+
+      <div class="form-group">
+        <label>Category <span class="required">*</span></label>
+        <select id="reqCategory" required>
+          <option value="">-- Select Category --</option>
+          <option value="HDD">HDD</option>
+          <option value="SSD">SSD</option>
+          <option value="NVMe">NVMe</option>
+          <option value="Storage">Storage</option>
+          <option value="Memory">Memory</option>
+          <option value="RAM">RAM</option>
+          <option value="DDR">DDR</option>
+          <option value="SODIMM">SODIMM</option>
+          <option value="PSU">PSU</option>
+          <option value="Power">Power</option>
+          <option value="Power Supply">Power Supply</option>
+          <option value="GPU">GPU</option>
+          <option value="Graphics Card">Graphics Card</option>
+          <option value="Network">Network</option>
+          <option value="Motherboard">Motherboard</option>
+          <option value="Cooling">Cooling</option>
+          <option value="Processor">Processor</option>
+          <option value="Accessories">Accessories</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Asset Tag <span class="required">*</span></label>
+        <input type="text" id="reqPart" placeholder="e.g. 371-1900-01" required />
+      </div>
+
+      <!-- SERIAL (internal only) -->
+      <div class="form-group" id="serialGroup">
+        <label>Serial #</label>
+        <input type="text" id="reqSerial" placeholder="e.g. 1938ZAL-0809M205DT" />
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="reqDesc" placeholder="e.g. 4GB, 10GB, 750W" />
+      </div>
+
+      <div class="form-group">
+        <label>Quantity <span class="required">*</span></label>
+        <input type="number" id="reqQty" placeholder="1" min="1" value="1" required />
+      </div>
+
+      <!-- RACK (internal only) -->
+      <div class="form-group" id="rackGroup">
+        <label>Rack</label>
+        <input type="text" id="reqRack" placeholder="e.g. R8L2, R1L1" />
+      </div>
+
+      <div class="form-group">
+        <label>Justification</label>
+        <textarea id="reqJustification" placeholder="Why do you need this item?"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="reqPriority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Required Date</label>
+        <input type="date" id="reqDate" />
+      </div>
+
+      <!-- CART -->
+      <div class="cart-section">
+        <div class="cart-header">
+          <span>🛒 Cart</span>
+          <span class="cart-count" id="cartCount">0 items</span>
+        </div>
+        <div class="cart-list" id="cartList">
+          <div class="cart-empty" id="cartEmpty">No items yet — fill the form and click "Add to Cart"</div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeNewRequestModal()">Cancel</button>
+        <button class="btn-cart" id="btnAddToCart" onclick="addToCart()">🛒 Add to Cart</button>
+        <button class="btn-submit-all" id="btnSubmitAll" onclick="submitAll()">📤 Submit All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- ADD VENDOR MODAL ---------- -->
+  <div class="modal-overlay" id="vendorModal">
+    <div class="modal-content">
+      <h2>➕ Add New Vendor</h2>
+      <p style="color: #7a8ba3; font-size: 13px; margin-bottom: 15px;">
+        Fields with <span style="color: #ef6b6b;">*</span> are required
+      </p>
+
+      <div class="form-group">
+        <label>Vendor Name <span class="required">*</span></label>
+        <input type="text" id="vendorName" placeholder="e.g. TechSupply Inc." required />
+      </div>
+
+      <div class="form-group">
+        <label>Contact Person <span class="required">*</span></label>
+        <input type="text" id="vendorContact" placeholder="e.g. John Doe" required />
+      </div>
+
+      <div class="form-group">
+        <label>Email <span class="required">*</span></label>
+        <input type="email" id="vendorEmail" placeholder="e.g. john@techsupply.com" required />
+      </div>
+
+      <div class="form-group">
+        <label>Phone <span class="required">*</span></label>
+        <input type="text" id="vendorPhone" placeholder="e.g. 555-1234" required />
+      </div>
+
+      <div class="form-group">
+        <label>Performance Rating <span style="color:#7a8ba3; font-weight:400; text-transform:none;">(optional, 1–5)</span></label>
+        <input type="number" id="vendorRating" min="1" max="5" placeholder="e.g. 4" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeVendorModal()">Cancel</button>
+        <button class="btn-save" onclick="saveVendor()">Save Vendor</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/notifications.js"></script>
+  <script src="/logout.js"></script>
+  <script src="/escape.js"></script> 
+  <script>
+    // ---------- STATE ----------
+    let currentUser = null;
+    let requestsData = [];
+    let currentStatusFilter = null;
+    let currentSearchKeyword = '';
+    let cart = [];   // ⭐ items staged for submission
+
+    // ---------- AUTH CHECK ----------
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.user) {
+          window.location.href = '/login.html';
+          return null;
+        }
+        currentUser = data.user;
+        document.getElementById('userName').textContent = currentUser.full_name || currentUser.username;
+
+        const roleEl = document.getElementById('userRole');
+        roleEl.textContent = currentUser.role;
+        roleEl.className = 'role-tag ' + currentUser.role;
+
+        // Hide "New Request" button for non-admin/manager
+        const canCreate = currentUser.role === 'admin' || currentUser.role === 'manager';
+        const btnNewReq = document.getElementById('btnNewRequest');
+        if (btnNewReq) btnNewReq.style.display = canCreate ? '' : 'none';
+
+        return currentUser;
+      } catch (e) {
+        window.location.href = '/login.html';
+        return null;
+      }
+    }
+
+    // ---------- LOAD REQUESTS ----------
+    async function loadRequests() {
+      const tbody = document.getElementById('requestsBody');
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="12">⏳ Loading requests...</td></tr>`;
+
+      try {
+        const response = await fetch('/api/requests', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch');
+        let data = await response.json();
+
+        requestsData = data.sort((a, b) => {
+          const aP = a.status === 'pending' ? 0 : 1;
+          const bP = b.status === 'pending' ? 0 : 1;
+          if (aP !== bP) return aP - bP;
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        renderFiltered();
+      } catch (error) {
+        console.error('Error loading requests:', error);
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="12">❌ Error loading requests.</td></tr>`;
+      }
+    }
+
+    // ---------- FILTERS ----------
+    function renderFiltered() {
+      let result = requestsData;
+
+      if (currentStatusFilter === 'pending') {
+        result = result.filter(r => r.status === 'pending');
+      } else if (currentStatusFilter === 'approved') {
+        result = result.filter(r => [
+          'approved', 'ordered', 'received',
+          'pending_manager_approval', 'pending_purchase',
+          'purchased', 'shipped', 'delivered', 'completed'
+        ].includes(r.status));
+      } else if (currentStatusFilter === 'rejected') {
+        result = result.filter(r => r.status === 'rejected');
+      }
+
+      if (currentSearchKeyword) {
+        result = result.filter(r => {
+          const s = `${r.client || ''} ${r.category || ''} ${r.part || ''} ${r.serial || ''} ${r.status || ''} ${r.requester_name || ''}`.toLowerCase();
+          return s.includes(currentSearchKeyword);
+        });
+      }
+
+      renderTable(result);
+      updateStats();
+    }
+
+    function applyStatusFilter(status, element) {
+      document.querySelectorAll('.stat-item').forEach(el => el.classList.remove('active-filter'));
+      if (currentStatusFilter === status) {
+        currentStatusFilter = null;
+        renderFiltered();
+        return;
+      }
+      currentStatusFilter = status;
+      element.classList.add('active-filter');
+      renderFiltered();
+    }
+
+    function applyFilters() {
+      currentSearchKeyword = document.getElementById('searchKeyword').value.toLowerCase().trim();
+      if (currentSearchKeyword) {
+        currentStatusFilter = null;
+        document.querySelectorAll('.stat-item').forEach(el => el.classList.remove('active-filter'));
+      }
+      renderFiltered();
+    }
+
+    // ---------- RENDER TABLE ----------
+    function renderTable(data) {
+      const tbody = document.getElementById('requestsBody');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="12">📭 No requests found.</td></tr>`;
+        return;
+      }
+
+      const isManager = currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager');
+      let html = '';
+
+      data.forEach(req => {
+        const canAct = isManager
+          && req.status === 'pending'
+          && (currentUser.role === 'admin' || req.requested_by !== currentUser.user_id);
+
+        const canConfirm = req.status === 'delivered'
+          && req.requested_by === currentUser.user_id;
+
+        const prettyStatus = (req.status || '').replace(/_/g, ' ');
+
+        let actionCell;
+        if (canConfirm) {
+          actionCell = `<button class="btn-confirm" onclick="confirmReceipt(${req.request_id})">📦 Confirm Picked Up</button>`;
+        } else if (canAct) {
+          actionCell = `
+            <div class="action-buttons">
+              <button class="btn-approve" onclick="approveRequest(${req.request_id})">Approve</button>
+              <button class="btn-reject" onclick="rejectRequest(${req.request_id})">Reject</button>
+            </div>
+          `;
+        } else {
+          actionCell = '—';
+        }
+
+        html += `<tr>
+          <td>${escapeHtml(req.request_id)}</td>
+          <td>${escapeHtml(req.client || '—')}</td>
+          <td>${escapeHtml(req.category || '—')}</td>
+          <td>${escapeHtml(req.part || '—')}</td>
+          <td>${escapeHtml(req.serial || '—')}</td>
+          <td>${escapeHtml(req.qty || 0)}</td>
+          <td><span class="priority-badge ${escapeAttr(req.priority || 'medium')}">${escapeHtml(req.priority || 'medium')}</span></td>
+          <td>
+          ${req.request_type === 'external'
+            ? escapeHtml(req.vendor_name || 'Vendor')
+            : 'Internal'}
+        </td>
+          <td><span class="status-badge ${escapeAttr(req.status)}">${escapeHtml(prettyStatus)}</span></td>
+          <td>${escapeHtml(req.requester_name || '—')}</td>
+          <td>${escapeHtml(new Date(req.created_at).toLocaleDateString())}</td>
+          <td>${actionCell}</td>
+        </tr>`;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function updateStats() {
+      const pending = requestsData.filter(r => r.status === 'pending').length;
+      const approved = requestsData.filter(r =>
+        ['approved', 'ordered', 'received', 'pending_manager_approval',
+         'pending_purchase', 'purchased', 'shipped', 'delivered', 'completed'].includes(r.status)
+      ).length;
+      const rejected = requestsData.filter(r => r.status === 'rejected').length;
+      document.getElementById('stat-pending').textContent = pending;
+      document.getElementById('stat-approved').textContent = approved;
+      document.getElementById('stat-rejected').textContent = rejected;
+    }
+
+    // ---------- TOGGLE FIELDS ----------
+    function toggleFieldVisibility() {
+      const type = document.getElementById('reqType').value;
+      const vendorGroup = document.getElementById('vendorGroup');
+      const serialGroup = document.getElementById('serialGroup');
+      const rackGroup   = document.getElementById('rackGroup');
+
+      if (type === 'external') {
+        // External → show vendor, hide serial + rack
+        vendorGroup.style.display = 'block';
+        document.getElementById('reqVendor').required = true;
+
+        serialGroup.style.display = 'none';
+        document.getElementById('reqSerial').value = '';
+
+        rackGroup.style.display = 'none';
+        document.getElementById('reqRack').value = '';
+      } else {
+        // Internal → hide vendor, show serial + rack
+        vendorGroup.style.display = 'none';
+        document.getElementById('reqVendor').required = false;
+
+        serialGroup.style.display = '';
+        rackGroup.style.display = '';
+      }
+    }
+
+    // ---------- LOAD CLIENTS ----------
+    async function loadClientsForRequest() {
+      try {
+        const response = await fetch('/api/clients', { credentials: 'include' });
+        const clients = await response.json();
+        const datalist = document.getElementById('clientList');
+        datalist.innerHTML = clients.map(c => `<option value="${c}"></option>`).join('');
+      } catch (e) {
+        console.error('Error loading clients:', e);
+      }
+    }
+
+    // ---------- LOAD VENDORS ----------
+    async function loadVendorsForRequest() {
+      try {
+        const response = await fetch('/api/vendors', { credentials: 'include' });
+        const vendors = await response.json();
+        const select = document.getElementById('reqVendor');
+        select.innerHTML = '<option value="">-- Select Vendor --</option>';
+        vendors.forEach(v => {
+          select.innerHTML += `<option value="${v.vendor_id}">${v.name}</option>`;
+        });
+      } catch (e) {
+        console.error('Error loading vendors:', e);
+      }
+    }
+
+    // ---------- ADD VENDOR ----------
+    function openVendorModal() {
+      if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manager')) {
+        alert('Only managers and admins can add vendors.');
+        return;
+      }
+      document.getElementById('vendorName').value = '';
+      document.getElementById('vendorContact').value = '';
+      document.getElementById('vendorEmail').value = '';
+      document.getElementById('vendorPhone').value = '';
+      document.getElementById('vendorRating').value = '';
+      document.getElementById('vendorModal').classList.add('show');
+    }
+
+    function closeVendorModal() {
+      document.getElementById('vendorModal').classList.remove('show');
+    }
+
+    async function saveVendor() {
+      const name           = document.getElementById('vendorName').value.trim();
+      const contact_person = document.getElementById('vendorContact').value.trim();
+      const email          = document.getElementById('vendorEmail').value.trim();
+      const phone          = document.getElementById('vendorPhone').value.trim();
+      const ratingVal      = document.getElementById('vendorRating').value.trim();
+      const performance_rating = ratingVal ? parseInt(ratingVal) : null;
+
+      if (!name || !contact_person || !email || !phone) {
+        alert('⚠️ Name, Contact Person, Email, and Phone are required.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/vendors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, contact_person, email, phone, performance_rating })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save vendor');
+
+        alert(`✅ Vendor "${data.name}" added successfully!`);
+        closeVendorModal();
+        await loadVendorsForRequest();
+        document.getElementById('reqVendor').value = data.vendor_id;
+      } catch (e) {
+        alert('❌ ' + e.message);
+      }
+    }
+
+    // ---------- OPEN MODAL ----------
+    function openNewRequestModal() {
+      const isManagerOrAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager');
+      if (!isManagerOrAdmin) {
+        alert('🔒 Only managers and admins can create new requests.');
+        return;
+      }
+
+      // Reset form
+      document.getElementById('reqClient').value = '';
+      document.getElementById('reqCategory').value = '';
+      document.getElementById('reqPart').value = '';
+      document.getElementById('reqSerial').value = '';
+      document.getElementById('reqDesc').value = '';
+      document.getElementById('reqQty').value = 1;
+      document.getElementById('reqRack').value = '';
+      document.getElementById('reqJustification').value = '';
+      document.getElementById('reqPriority').value = 'medium';
+      document.getElementById('reqDate').value = '';
+      document.getElementById('reqType').value = 'internal';
+
+      // Reset visibility
+      document.getElementById('vendorGroup').style.display = 'none';
+      document.getElementById('serialGroup').style.display = '';
+      document.getElementById('rackGroup').style.display = '';
+
+      const typeSelect = document.getElementById('reqType');
+      const hint = document.getElementById('reqTypeHint');
+      typeSelect.disabled = false;
+      if (hint) hint.style.display = 'none';
+
+      // Reset cart
+      cart = [];
+      renderCart();
+
+      document.getElementById('newRequestModal').classList.add('show');
+      loadVendorsForRequest();
+      loadClientsForRequest();
+    }
+
+    function closeNewRequestModal() {
+      if (cart.length > 0) {
+        if (!confirm(`You have ${cart.length} item(s) in the cart. Close and discard them?`)) return;
+      }
+      cart = [];
+      renderCart();
+      document.getElementById('newRequestModal').classList.remove('show');
+    }
+
+    // ---------- CART: ADD ----------
+    function addToCart() {
+      const type           = document.getElementById('reqType').value;
+      const client         = document.getElementById('reqClient').value.trim().toUpperCase();
+      const category       = document.getElementById('reqCategory').value;
+      const part           = document.getElementById('reqPart').value.trim();
+      const serial         = document.getElementById('reqSerial').value.trim();
+      const description    = document.getElementById('reqDesc').value.trim();
+      const qty            = parseInt(document.getElementById('reqQty').value) || 1;
+      const rack           = document.getElementById('reqRack').value.trim();
+      const justification  = document.getElementById('reqJustification').value.trim();
+      const priority       = document.getElementById('reqPriority').value;
+      const required_date  = document.getElementById('reqDate').value;
+      const vendor_id      = document.getElementById('reqVendor').value;
+
+      // Validate
+      if (!client || !category || !part) {
+        alert('⚠️ Client, Category, and Asset Tag are required.');
+        return;
+      }
+      if (type === 'external' && !vendor_id) {
+        alert('⚠️ Please select a vendor for external purchase.');
+        return;
+      }
+      if (qty < 1) {
+        alert('⚠️ Quantity must be at least 1.');
+        return;
+      }
+
+      // Build cart item
+      const item = {
+        request_type: type,
+        client, category, part,
+        serial: type === 'external' ? null : (serial || null),
+        description, qty,
+        rack: type === 'external' ? null : (rack || null),
+        justification, priority, required_date,
+        vendor_id: type === 'external' ? vendor_id : null,
+        vendor_name: type === 'external' ? getVendorName(vendor_id) : null
+      };
+
+      cart.push(item);
+      renderCart();
+
+      // Clear the item fields (keep type + vendor + priority for quick re-entry)
+      document.getElementById('reqPart').value = '';
+      document.getElementById('reqSerial').value = '';
+      document.getElementById('reqDesc').value = '';
+      document.getElementById('reqQty').value = 1;
+      document.getElementById('reqRack').value = '';
+      document.getElementById('reqJustification').value = '';
+
+      // Focus back on Asset Tag for fast entry
+      document.getElementById('reqPart').focus();
+    }
+
+    function getVendorName(vendorId) {
+      const sel = document.getElementById('reqVendor');
+      const opt = sel.querySelector(`option[value="${vendorId}"]`);
+      return opt ? opt.textContent : 'Vendor';
+    }
+
+    // ---------- CART: RENDER ----------
+    function renderCart() {
+      const list = document.getElementById('cartList');
+      const countEl = document.getElementById('cartCount');
+      countEl.textContent = cart.length + (cart.length === 1 ? ' item' : ' items');
+
+      if (cart.length === 0) {
+        list.innerHTML = `<div class="cart-empty">No items yet — fill the form and click "Add to Cart"</div>`;
+        return;
+      }
+
+      list.innerHTML = cart.map((item, idx) => {
+        const typeIcon = item.request_type === 'external' ? '🏭' : '🏢';
+        const metaParts = [item.client];
+        if (item.request_type === 'external' && item.vendor_name) {
+          metaParts.push('Vendor: ' + item.vendor_name);
+        }
+        if (item.rack) metaParts.push('Rack ' + item.rack);
+        const meta = metaParts.join(' · ');
+
+        return `
+          <div class="cart-item">
+            <div class="cart-item-main">
+              <div class="cart-item-title">
+                <span class="type-icon">${typeIcon}</span>
+                <span>${escapeHtml(item.category)} — ${escapeHtml(item.part)}</span>
+                <span class="qty">× ${item.qty}</span>
+              </div>
+              <div class="cart-item-meta">${escapeHtml(meta)}</div>
+            </div>
+            <button class="cart-item-remove" onclick="removeFromCart(${idx})" title="Remove">✕</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function removeFromCart(idx) {
+      cart.splice(idx, 1);
+      renderCart();
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ---------- SUBMIT ALL ----------
+    async function submitAll() {
+      // If the form has valid data not yet added, add it first (convenience)
+      const partVal = document.getElementById('reqPart').value.trim();
+      if (partVal) {
+        // Only try to add if the required basics are filled
+        const clientVal = document.getElementById('reqClient').value.trim();
+        const catVal    = document.getElementById('reqCategory').value;
+        if (clientVal && catVal) {
+          addToCart();
+        }
+      }
+
+      if (cart.length === 0) {
+        alert('⚠️ Cart is empty. Fill the form and click "Add to Cart" first.');
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitAll');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '⏳ Submitting…';
+
+      let success = 0;
+      let failed = 0;
+      const errors = [];
+
+      for (let i = 0; i < cart.length; i++) {
+        const item = cart[i];
+        try {
+          const res = await fetch('/api/requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(item)
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed');
+          success++;
+        } catch (e) {
+          failed++;
+          errors.push(`Item ${i + 1} (${item.part}): ${e.message}`);
+        }
+      }
+
+      btn.disabled = false;
+      btn.textContent = original;
+
+      if (failed === 0) {
+        alert(`✅ All ${success} item(s) submitted successfully!`);
+        cart = [];
+        renderCart();
+        closeNewRequestModal();
+        loadRequests();
+      } else {
+        alert(`⚠️ ${success} succeeded, ${failed} failed:\n\n${errors.join('\n')}`);
+        // Keep the failed items in the cart for retry
+        cart = cart.slice(success + failed - failed); // simple approach: keep all for review
+        renderCart();
+        loadRequests();
+      }
+    }
+
+    // ---------- APPROVE / REJECT / CONFIRM ----------
+    async function approveRequest(id) {
+      if (!confirm('Approve this request?')) return;
+      try {
+        const response = await fetch(`/api/requests/${id}/approve`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to approve');
+        alert(`✅ ${data.message}`);
+        loadRequests();
+      } catch (error) {
+        alert(`❌ Failed to approve: ${error.message}`);
+      }
+    }
+
+    async function rejectRequest(id) {
+      const reason = prompt('Please enter a reason for rejection:');
+      if (reason === null) return;
+      try {
+        const response = await fetch(`/api/requests/${id}/reject`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reason: reason || 'No reason provided.' })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to reject');
+        alert(`✅ Request rejected.`);
+        loadRequests();
+      } catch (error) {
+        alert(`❌ Failed to reject: ${error.message}`);
+      }
+    }
+
+    async function confirmReceipt(id) {
+      if (!confirm('Confirm that you have picked up / received this item?')) return;
+      try {
+        const res = await fetch(`/api/requests/${id}/user-confirm`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to confirm');
+        alert('✅ Receipt confirmed. Request marked as completed.');
+        loadRequests();
+      } catch (e) {
+        alert('❌ ' + e.message);
+      }
+    }
+
+    // ---------- PAGE LOAD ----------
+    document.addEventListener('DOMContentLoaded', async function() {
+      await checkAuth();
+      if (currentUser) {
+        loadRequests();
+
+            // Auto-apply filter from URL (?filter=pending)
+    const urlFilter = new URLSearchParams(location.search).get('filter');
+    if (urlFilter === 'pending') {
+      setTimeout(() => {
+        const pendingCard = document.querySelector('.stat-item.pending');
+        if (pendingCard) pendingCard.click();
+      }, 300);
+    }
+
+        document.getElementById('searchKeyword').addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') applyFilters();
+        });
+      }
+    });
+  </script>
+  <script>
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

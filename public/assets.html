@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | Assets</title>
+  <script src="/theme.js"></script>
+  <script src="/sidebar.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-body:#0b0e14; --bg-sidebar:#141a24; --bg-main:#0f131a; --bg-card:#181f2b;
+      --bg-elevated:#1f2a3a; --bg-header:#111820; --bg-hover:#1a2332;
+      --border:#2a3344; --border-soft:#252f3f; --border-row:#1f2a3a;
+      --text-primary:#e2e8f0; --text-secondary:#cbd5e0; --text-muted:#7a8ba3; --text-dim:#a0b3cc;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    [data-theme="light"] {
+      --bg-body:#f1f5f9; --bg-sidebar:#ffffff; --bg-main:#f8fafc; --bg-card:#ffffff;
+      --bg-elevated:#f1f5f9; --bg-header:#f8fafc; --bg-hover:#f1f5f9;
+      --border:#e2e8f0; --border-soft:#e2e8f0; --border-row:#f1f5f9;
+      --text-primary:#0f172a; --text-secondary:#334155; --text-muted:#64748b; --text-dim:#475569;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+    body { background:var(--bg-body); display:flex; height:100vh; color:var(--text-primary); overflow:hidden; transition:background .2s ease, color .2s ease; }
+
+    /* SIDEBAR */
+    .sidebar {
+  width: 240px;
+  background: #232c36;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #333333;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -8px;               /* negative so scrollbar doesn't clip buttons */
+  padding: 0 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 5px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Brand block */
+.sidebar-brand {
+  text-align: center;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.brand-logo-wrap {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+  display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.brand-divider {
+  width: 50px;
+  height: 2px;
+  background: #ffffff;
+  margin: 10px auto 12px;
+  border-radius: 1px;
+  opacity: 0.6;
+}
+
+.brand-dept {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.brand-tagline {
+  font-size: 9px;
+  color: #ffffff;
+  letter-spacing: 0.6px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Nav buttons */
+.side-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-bottom: 4px;
+  font-family: inherit;
+  position: relative;
+}
+
+/* Hover = red with 40% opacity */
+.side-btn:hover {
+  background: rgba(121, 121, 121, 0.4);
+  color: #ffffff;
+}
+
+/* Active button */
+.side-btn.active {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+.side-btn.active:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Icons */
+.side-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  stroke-width: 1.8;
+  color: inherit;
+  stroke: currentColor;
+}
+
+/* Logout button */
+.logout-btn {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 16px;
+  color: #ffffff;
+}
+
+.logout-btn:hover {
+  background: rgba(220, 38, 38, 0.4);
+  color: #ffffff;
+}
+
+    /* Collapsed state overrides */
+    .sidebar.collapsed {
+      width: 70px;
+      padding: 30px 10px;
+    }
+    .sidebar.collapsed .brand-dept,
+    .sidebar.collapsed .brand-tagline,
+    .sidebar.collapsed .brand-divider {
+      display: none;
+    }
+    .sidebar.collapsed .sidebar-brand {
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    .sidebar.collapsed .brand-logo-wrap {
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 0;
+    }
+    .sidebar.collapsed .brand-logo {
+      max-width: 44px;
+    }
+
+    /* MAIN */
+    .main { flex:1; padding:30px 40px; overflow-y:auto; background:var(--bg-main); display:flex; flex-direction:column; }
+    .main-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; }
+    .main-header h1 { font-size:26px; font-weight:300; letter-spacing:1px; color:var(--text-primary); }
+    .main-header .header-right { display:flex; align-items:center; gap:14px; }
+    .main-header .user-badge { background:var(--bg-elevated); padding:8px 18px; border-radius:30px; font-size:14px; color:var(--text-dim); border:1px solid var(--border); display:flex; align-items:center; gap:6px; text-transform:uppercase; }
+    .main-header .user-badge span { color:inherit; }
+    .main-header .user-badge .role-tag { color:var(--text-primary); border-radius:12px; font-size:13.5px; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+
+    /* STATS */
+    .stats-overview { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+    .stat-item { background:var(--bg-card); border:1px solid var(--border-soft); border-radius:12px; padding:10px 20px; flex:1 0 auto; min-width:120px; text-align:center; transition:.2s; cursor:pointer; }
+    .stat-item:hover { border-color:var(--border); background:var(--bg-elevated); }
+    .stat-item.active-filter { border-color:var(--accent); background:var(--bg-elevated); }
+    .stat-item .stat-value { font-size:24px; font-weight:700; color:var(--text-primary); line-height:1.2; }
+    .stat-item .stat-label { font-size:11px; text-transform:uppercase; color:var(--text-muted); letter-spacing:1px; margin-top:2px; }
+    .stat-item.good   .stat-value { color:#4ade80; }
+    .stat-item.warn   .stat-value { color:#f59e0b; }
+    .stat-item.muted  .stat-value { color:var(--text-muted); }
+
+    /* CONTROLS */
+    .table-controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
+    .table-controls .entries { color:var(--text-muted); font-size:14px; }
+    .search-box { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .search-box input { background:var(--bg-elevated); color:var(--text-primary); border:1px solid var(--border); padding:6px 12px; border-radius:6px; font-size:13px; min-width:220px; }
+    .search-box input:focus { outline:none; border-color:var(--accent); }
+    .search-box button { background:var(--accent); border:none; padding:6px 18px; border-radius:6px; color:var(--accent-text); font-weight:600; cursor:pointer; transition:.2s; font-family:inherit; font-size:13px; }
+    .search-box button:hover { background:var(--accent-hover); }
+    .add-btn { background:#2a6b3a; border:none; padding:7px 16px; border-radius:6px; color:#fff; font-weight:700; cursor:pointer; transition:.2s; font-family:inherit; font-size:13px; display:inline-flex; align-items:center; gap:6px; }
+    .add-btn:hover { background:#3a8b4a; }
+
+    /* TABLE */
+    .table-wrapper { background:var(--bg-card); border-radius:16px; border:1px solid var(--border-soft); overflow:hidden; display:flex; flex-direction:column; flex:1; min-height:0; }
+    .table-scroll { overflow:auto; flex:1; min-height:0; }
+    .table-scroll::-webkit-scrollbar { width:8px; height:8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; min-width:1050px; }
+    th { text-align:left; padding:14px 16px; background:var(--bg-header); color:var(--text-muted); text-transform:uppercase; font-size:11px; letter-spacing:1px; border-bottom:2px solid var(--border-soft); position:sticky; top:0; z-index:10; white-space:nowrap; }
+    td { padding:12px 16px; border-bottom:1px solid var(--border-row); color:var(--text-secondary); vertical-align:middle; }
+    tr:hover td { background:var(--bg-hover); }
+    tr.decomposed-row td { opacity:.5; }
+    tr.decomposed-row:hover td { opacity:1; }
+    tr.taken-out-row td { background:rgba(245,158,11,.05); }
+    .empty-row td { text-align:center; padding:40px 16px; color:var(--text-muted); font-style:italic; font-size:15px; }
+    td.serial-col { font-family:'Consolas','Monaco',monospace; font-weight:700; color:var(--text-primary); font-size:12.5px; }
+
+    /* STATUS BADGE */
+    .status-badge { padding:3px 12px; border-radius:30px; font-size:11px; font-weight:700; display:inline-block; text-transform:uppercase; letter-spacing:.4px; }
+    .status-badge.in_stock   { background:#2a6b3a; color:#8bdd9b; }
+    .status-badge.taken_out  { background:#6b5a2a; color:#f0d06b; }
+    .status-badge.decomposed { background:#4a2a2a; color:#f08b8b; }
+
+    /* INFO BUTTON */
+    .info-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:32px; height:32px; border-radius:50%;
+      background:var(--bg-elevated); border:1px solid var(--border);
+      color:var(--text-dim); cursor:pointer; transition:.15s;
+      padding:0; font-family:inherit;
+    }
+    .info-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--bg-hover); transform:scale(1.05); }
+    .info-btn svg { width:16px; height:16px; stroke-width:2.2; }
+
+    /* ACTIONS */
+    .row-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+    .btn-takeout-row {
+      background:#6b5a2a; border:none; padding:5px 12px; border-radius:6px;
+      font-weight:600; font-size:11.5px; color:#ffffff; cursor:pointer;
+      transition:.2s; font-family:inherit; white-space:nowrap;
+      display:inline-flex; align-items:center; gap:5px;
+    }
+    .btn-takeout-row:hover { background:#8b7a3a; }
+    .btn-takeout-row svg { width:12px; height:12px; stroke-width:2.2; }
+    .btn-return-row {
+      background:#2a6b3a; border:none; padding:5px 12px; border-radius:6px;
+      font-weight:600; font-size:11.5px; color:#ffffff; cursor:pointer;
+      transition:.2s; font-family:inherit; white-space:nowrap;
+      display:inline-flex; align-items:center; gap:5px;
+    }
+    .btn-return-row:hover { background:#3a8b4a; }
+    .btn-return-row svg { width:12px; height:12px; stroke-width:2.2; }
+    .btn-decompose-row {
+      background:#6b2a2a; border:none; padding:5px 12px; border-radius:6px;
+      font-weight:600; font-size:11.5px; color:#ffffff; cursor:pointer;
+      transition:.2s; font-family:inherit; white-space:nowrap;
+      display:inline-flex; align-items:center; gap:5px;
+    }
+    .btn-decompose-row:hover { background:#8b3a3a; }
+    .btn-decompose-row svg { width:12px; height:12px; stroke-width:2.2; }
+    .read-only-note { color:var(--text-muted); font-size:11.5px; font-style:italic; }
+
+    /* MODAL */
+    .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center; }
+    .modal-overlay.show { display:flex; }
+    .modal-content { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:30px 35px; width:560px; max-width:95%; max-height:90vh; overflow-y:auto; box-shadow:0 25px 50px rgba(0,0,0,0.5); }
+    .modal-content.wide { width:680px; }
+    .modal-content h2 { color:var(--text-primary); font-weight:300; letter-spacing:1px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px; }
+    .modal-content .form-group { margin-bottom:14px; display:flex; flex-direction:column; }
+    .modal-content .form-group label { color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; font-weight:600; }
+    .modal-content .form-group label .required { color:var(--accent); }
+    .modal-content .form-group input,
+    .modal-content .form-group select,
+    .modal-content .form-group textarea { background:var(--bg-body); color:var(--text-primary); border:1px solid var(--border); padding:10px 14px; border-radius:8px; font-size:14px; width:100%; font-family:inherit; }
+    .modal-content .form-group input:focus,
+    .modal-content .form-group select:focus,
+    .modal-content .form-group textarea:focus { outline:none; border-color:var(--accent); }
+    .modal-content .form-group textarea { resize:vertical; min-height:60px; }
+    .modal-info { background:var(--bg-header); border:1px solid var(--border-soft); border-radius:8px; padding:12px 16px; margin-bottom:18px; font-size:13px; line-height:1.6; color:var(--text-secondary); }
+    .modal-info b { color:var(--accent); }
+    .modal-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:20px; border-top:1px solid var(--border); padding-top:20px; }
+    .modal-actions button { padding:10px 24px; border:none; border-radius:8px; font-weight:600; cursor:pointer; transition:.2s; font-family:inherit; }
+    .modal-actions .btn-save { background:var(--accent); color:var(--accent-text); }
+    .modal-actions .btn-save:hover { background:var(--accent-hover); }
+    .modal-actions .btn-save:disabled { opacity:.5; cursor:not-allowed; }
+    .modal-actions .btn-takeout-confirm { background:#6b5a2a; color:#fff; }
+    .modal-actions .btn-takeout-confirm:hover { background:#8b7a3a; }
+    .modal-actions .btn-return-confirm { background:#2a6b3a; color:#fff; }
+    .modal-actions .btn-return-confirm:hover { background:#3a8b4a; }
+    .modal-actions .btn-decompose-confirm { background:#6b2a2a; color:#fff; }
+    .modal-actions .btn-decompose-confirm:hover { background:#8b3a3a; }
+    .modal-actions .btn-cancel { background:var(--bg-elevated); color:var(--text-dim); }
+    .modal-actions .btn-cancel:hover { background:var(--border); color:var(--text-primary); }
+
+    /* INFO MODAL — sections */
+    .info-section { margin-bottom:22px; }
+    .info-section:last-child { margin-bottom:0; }
+    .info-section-title {
+      color:var(--text-muted); font-size:11px; text-transform:uppercase;
+      letter-spacing:1px; font-weight:700; margin-bottom:10px;
+      padding-bottom:6px; border-bottom:1px dashed var(--border-soft);
+    }
+    .info-grid {
+      display:grid; grid-template-columns:110px 1fr; gap:8px 16px;
+      font-size:13px;
+    }
+    .info-grid .ig-label { color:var(--text-muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.5px; font-weight:600; padding-top:2px; }
+    .info-grid .ig-value { color:var(--text-primary); word-break:break-word; }
+    .info-grid .ig-value.mono { font-family:'Consolas','Monaco',monospace; font-weight:700; }
+
+    /* TIMELINE */
+    .timeline { position:relative; padding-left:28px; }
+    .timeline::before {
+      content:''; position:absolute; left:11px; top:6px; bottom:6px;
+      width:2px; background:var(--border-soft);
+    }
+    .tl-item {
+      position:relative; margin-bottom:16px;
+      padding:10px 14px; background:var(--bg-header);
+      border:1px solid var(--border-soft); border-radius:8px;
+    }
+    .tl-item:last-child { margin-bottom:0; }
+    .tl-dot {
+      position:absolute; left:-22px; top:12px;
+      width:14px; height:14px; border-radius:50%;
+      border:2px solid var(--bg-card); display:flex; align-items:center; justify-content:center;
+      font-size:9px; line-height:1;
+    }
+    .tl-dot.added      { background:#4ade80; }
+    .tl-dot.taken_out  { background:#f59e0b; }
+    .tl-dot.returned   { background:#3b82f6; }
+    .tl-dot.decomposed { background:#ef4444; }
+    .tl-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:2px; }
+    .tl-action { color:var(--text-primary); font-weight:700; font-size:12.5px; text-transform:capitalize; }
+    .tl-date { color:var(--text-muted); font-size:11px; }
+    .tl-meta { color:var(--text-muted); font-size:11.5px; }
+    .tl-notes {
+      color:var(--text-secondary); font-size:12px; margin-top:6px;
+      padding:6px 10px; background:var(--bg-body); border-radius:6px;
+      border-left:2px solid var(--border); font-style:italic;
+    }
+    .tl-empty { padding:20px; text-align:center; color:var(--text-muted); font-style:italic; font-size:12.5px; }
+
+    @media (max-width:768px) {
+      .sidebar { width:70px; padding:20px 10px; }
+      .sidebar .logo, .sidebar .logo-sub, .side-btn span:not(.email-badge) { display:none; }
+      .main { padding:20px; }
+      .table-controls { flex-direction:column; align-items:stretch; }
+      .search-box { flex-direction:column; align-items:stretch; }
+      .search-box input, .search-box button { width:100%; }
+      .stats-overview .stat-item { flex:1 1 40%; }
+      .modal-content { padding:20px; }
+      .info-grid { grid-template-columns:1fr; gap:2px 0; }
+      .info-grid .ig-label { padding-top:8px; }
+    }
+  </style>
+  <link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo-wrap">
+        <img src="img/logo.png" alt="Examedia" class="brand-logo" />
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-dept">TSD WMS</div>
+      <div class="brand-tagline">Technical Support Department</div>
+      <div class="brand-tagline">Warehouse Management System</div>
+    </div>
+
+    <div class="sidebar-nav">
+    <button class="side-btn" onclick="location.href='/dashboard.html'"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+    <button class="side-btn" onclick="location.href='/reports.html'"><i data-lucide="bar-chart-3"></i> <span>Reports</span></button>
+    <button class="side-btn" onclick="location.href='/inventory.html'"><i data-lucide="package"></i> <span>Inventory List</span></button>
+    <button class="side-btn active" onclick="location.href='/assets.html'"><i data-lucide="hard-drive"></i> <span>Assets</span></button>
+    <button class="side-btn" onclick="location.href='/loans.html'"><i data-lucide="arrow-right-left"></i> <span>Loan Tracking</span></button>
+    <button class="side-btn" onclick="location.href='/requests.html'"><i data-lucide="inbox"></i> <span>Requests</span></button>
+    <button class="side-btn" onclick="location.href='/finance.html'"><i data-lucide="shopping-cart"></i> <span>Procurement</span></button>
+    <button class="side-btn" onclick="location.href='/so-codes.html'"><i data-lucide="file-text"></i> <span>SO Codes</span></button>
+    <button class="side-btn" onclick="location.href='/audit.html'"><i data-lucide="search"></i> <span>Audit</span></button>
+    <button class="side-btn" onclick="location.href='/emails.html'"><i data-lucide="mail"></i> <span>Emails</span></button>
+    <button class="side-btn" onclick="location.href='/users.html'"><i data-lucide="users"></i> <span>Users</span></button>
+    <button class="side-btn" onclick="location.href='/settings.html'"><i data-lucide="settings"></i> <span>Settings</span></button>
+    <button class="side-btn logout-btn" onclick="logout()"><i data-lucide="log-out"></i> <span>Logout</span></button>
+      </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <div class="main-header">
+      <h1 style="font-weight: bold;">Department Assets</h1>
+      <div class="header-right">
+        <div id="notificationBell"></div>
+        <div class="user-badge">
+          👤 Welcome, <span id="userName">…</span>
+          <span class="role-tag" id="userRole"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-overview">
+      <div class="stat-item" onclick="applyStatusFilter(null, this)">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total Assets</div>
+      </div>
+      <div class="stat-item good" onclick="applyStatusFilter('in_stock', this)">
+        <div class="stat-value" id="stat-instock">0</div>
+        <div class="stat-label">In Stock</div>
+      </div>
+      <div class="stat-item warn" onclick="applyStatusFilter('taken_out', this)">
+        <div class="stat-value" id="stat-out">0</div>
+        <div class="stat-label">Taken Out</div>
+      </div>
+      <div class="stat-item muted" onclick="applyStatusFilter('decomposed', this)">
+        <div class="stat-value" id="stat-decomp">0</div>
+        <div class="stat-label">Decomposed</div>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="table-controls">
+      <div class="entries">Showing <b id="visibleCount">0</b> item(s)</div>
+      <div class="search-box">
+        <input type="text" id="searchKeyword" placeholder="Search by part, serial, rack, category..." onkeyup="applySearch()" />
+        <button onclick="applySearch()">Search</button>
+        <button class="add-btn" id="btnAddAsset" onclick="openAddModal()" style="display:none;">
+          <i data-lucide="plus"></i> Add New Asset
+        </button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrapper">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Item Name</th>
+              <th>Serial Number</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Rack</th>
+              <th>Status</th>
+              <th style="text-align:center;">Info</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="assetsBody">
+            <tr class="empty-row"><td colspan="9">📭 Loading assets...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Add New Asset -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-content">
+      <h2>➕ Add New Asset</h2>
+      <p style="color:#7a8ba3; font-size:13px; margin-bottom:15px;">
+        Fields with <span style="color:#ef6b6b;">*</span> are required. Each asset is stored as one row.
+      </p>
+
+      <div class="form-group">
+        <label>Item Name <span class="required">*</span></label>
+        <input type="text" id="newPart" placeholder="e.g. Dell Laptop, HDMI Cable, Cisco Switch" required autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label>Serial Number <span class="required">*</span></label>
+        <input type="text" id="newSerial" placeholder="e.g. SN-ABC-12345" required autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label>Category <span class="required">*</span></label>
+        <select id="newCategory" required>
+          <option value="">-- Select Category --</option>
+          <option value="Laptop">Laptop</option>
+          <option value="Desktop">Desktop</option>
+          <option value="Monitor">Monitor</option>
+          <option value="Network">Network</option>
+          <option value="Peripheral">Peripheral</option>
+          <option value="Cable">Cable</option>
+          <option value="Tool">Tool</option>
+          <option value="Storage">Storage</option>
+          <option value="Printer">Printer</option>
+          <option value="Phone">Phone</option>
+          <option value="Accessory">Accessory</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="newDesc" placeholder="e.g. Dell Latitude 5420, 16GB RAM, 512GB SSD" rows="2"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Rack / Location</label>
+        <input type="text" id="newRack" placeholder="e.g. R8L2, Shelf A, Storage Room" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+        <button class="btn-save" id="btnSaveAsset" onclick="saveAsset()">💾 Save Asset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Take Out Asset -->
+  <div class="modal-overlay" id="takeoutModal">
+    <div class="modal-content" style="width:520px;">
+      <h2>📤 Take Out Asset</h2>
+      <div class="modal-info" id="takeoutInfo"></div>
+
+      <div class="form-group">
+        <label>Taken Out By <span class="required">*</span></label>
+        <input type="text" id="takeoutBy" placeholder="e.g. Ahmad, John Doe, IT Dept" autocomplete="off" />
+        <small style="color:var(--text-muted); font-size:11px; margin-top:6px;">
+          Name of the person borrowing / using this asset.
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label>Notes <span style="color:#7a8ba3; font-weight:400; text-transform:none;">(optional)</span></label>
+        <textarea id="takeoutNotes" placeholder="e.g. For on-site installation at BKR" rows="2"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeTakeoutModal()">Cancel</button>
+        <button class="btn-takeout-confirm" id="btnConfirmTakeout" onclick="confirmTakeout()">
+          📤 Confirm Take Out
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Return Asset -->
+  <div class="modal-overlay" id="returnModal">
+    <div class="modal-content" style="width:480px;">
+      <h2>📥 Return Asset</h2>
+      <div class="modal-info" id="returnInfo"></div>
+
+      <p style="color:var(--text-secondary); font-size:13px; line-height:1.6;">
+        This asset will be marked as <b style="color:#8bdd9b;">In Stock</b> again. The previous borrow record stays in the timeline.
+      </p>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeReturnModal()">Cancel</button>
+        <button class="btn-return-confirm" id="btnConfirmReturn" onclick="confirmReturn()">
+          📥 Confirm Return
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Decompose Asset -->
+  <div class="modal-overlay" id="decomposeModal">
+    <div class="modal-content" style="width:520px;">
+      <h2>🗑️ Decompose Asset</h2>
+      <div class="modal-info" id="decomposeInfo"></div>
+
+      <p style="color:var(--text-secondary); font-size:13px; line-height:1.6;">
+        This asset will be marked as <b style="color:#f08b8b;">Decomposed</b>. It cannot be recovered. The record will be preserved for history.
+      </p>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label>Reason / Notes <span style="color:#7a8ba3; font-weight:400; text-transform:none;">(optional)</span></label>
+        <textarea id="decomposeNotes" placeholder="e.g. Damaged beyond repair, End of life" rows="2"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeDecomposeModal()">Cancel</button>
+        <button class="btn-decompose-confirm" id="btnConfirmDecompose" onclick="confirmDecompose()">
+          ✓ Confirm Decompose
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Info / Timeline -->
+  <div class="modal-overlay" id="infoModal">
+    <div class="modal-content wide">
+      <h2>ℹ️ Asset Details</h2>
+      <div id="infoBody">
+        <div class="tl-empty">⏳ Loading…</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeInfoModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/notifications.js"></script>
+  <script src="/logout.js"></script>
+  <script src="/escape.js"></script>
+  <script>
+    // ---------- STATE ----------
+    let currentUser = null;
+    let allAssets = [];
+    let currentStatusFilter = null;
+    let searchKeyword = '';
+    let takeoutTarget = null;
+    let returnTarget = null;
+    let decomposeTarget = null;
+
+    // ---------- AUTH ----------
+    (async function init() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.user) { window.location.href = '/login.html'; return; }
+        currentUser = data.user;
+
+        document.getElementById('userName').textContent =
+          currentUser.full_name || currentUser.username || 'User';
+        const roleEl = document.getElementById('userRole');
+        if (roleEl) {
+          roleEl.textContent = currentUser.role;
+          roleEl.className = 'role-tag ' + currentUser.role;
+        }
+
+        if (['admin', 'technician'].includes(currentUser.role)) {
+          document.getElementById('btnAddAsset').style.display = 'inline-flex';
+        }
+
+        await loadAssets();
+      } catch (e) {
+        console.error('Init failed:', e);
+        window.location.href = '/login.html';
+      }
+    })();
+
+    // ---------- LOAD ----------
+    async function loadAssets() {
+      const tbody = document.getElementById('assetsBody');
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="9">⏳ Loading assets...</td></tr>`;
+
+      try {
+        const res = await fetch('/api/assets', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load assets');
+        allAssets = await res.json();
+        updateStats();
+        renderTable();
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="9">❌ Error loading assets.</td></tr>`;
+      }
+    }
+
+    function canManage() {
+      return currentUser && ['admin', 'technician'].includes(currentUser.role);
+    }
+
+    // ---------- RENDER ----------
+    function renderTable() {
+      const tbody = document.getElementById('assetsBody');
+
+      let filtered = allAssets;
+      if (currentStatusFilter) filtered = filtered.filter(a => a.status === currentStatusFilter);
+      if (searchKeyword) {
+        filtered = filtered.filter(a => {
+          const s = `${a.part || ''} ${a.serial || ''} ${a.category || ''} ${a.description || ''} ${a.rack || ''} ${a.taken_out_by || ''}`.toLowerCase();
+          return s.includes(searchKeyword);
+        });
+      }
+
+      document.getElementById('visibleCount').textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="9">📭 No assets found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(a => {
+        const isInStock    = a.status === 'in_stock';
+        const isTakenOut   = a.status === 'taken_out';
+        const isDecomposed = a.status === 'decomposed';
+
+        const badgeText = a.status === 'in_stock' ? 'in stock'
+                        : a.status === 'taken_out' ? 'taken out'
+                        : 'decomposed';
+        const badge = `<span class="status-badge ${escapeAttr(a.status)}">${escapeHtml(badgeText)}</span>`;
+
+        // Info button — always visible for everyone
+        const infoCell = `
+          <button class="info-btn" onclick="openInfoModal(${a.asset_id})" title="View details & timeline">
+            <i data-lucide="info"></i>
+          </button>`;
+
+        // Action cell — depends on status + role
+        let actionCell = '';
+        if (isDecomposed) {
+          actionCell = `<span class="read-only-note">Decomposed</span>`;
+        } else if (!canManage()) {
+          actionCell = `<span class="read-only-note">View only</span>`;
+        } else if (isInStock) {
+          actionCell = `
+            <div class="row-actions">
+              <button class="btn-takeout-row" onclick="openTakeoutModal(${a.asset_id})">
+                <i data-lucide="upload"></i> Take Out
+              </button>
+              <button class="btn-decompose-row" onclick="openDecomposeModal(${a.asset_id})">
+                <i data-lucide="trash-2"></i> Decompose
+              </button>
+            </div>`;
+        } else if (isTakenOut) {
+          actionCell = `
+            <div class="row-actions">
+              <button class="btn-return-row" onclick="openReturnModal(${a.asset_id})">
+                <i data-lucide="download"></i> Return
+              </button>
+              <button class="btn-decompose-row" onclick="openDecomposeModal(${a.asset_id})">
+                <i data-lucide="trash-2"></i> Decompose
+              </button>
+            </div>`;
+        }
+
+        const rowClass = isDecomposed ? 'decomposed-row' : (isTakenOut ? 'taken-out-row' : '');
+
+        return `
+          <tr class="${rowClass}">
+            <td>#${a.asset_id}</td>
+            <td><strong>${escapeHtml(a.part || '—')}</strong></td>
+            <td class="serial-col">${escapeHtml(a.serial || '—')}</td>
+            <td>${escapeHtml(a.category || '—')}</td>
+            <td>${escapeHtml(a.description || '—')}</td>
+            <td>${escapeHtml(a.rack || '—')}</td>
+            <td>${badge}</td>
+            <td style="text-align:center;">${infoCell}</td>
+            <td>${actionCell}</td>
+          </tr>`;
+      }).join('');
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // ---------- STATS ----------
+    function updateStats() {
+      const total      = allAssets.length;
+      const inStock    = allAssets.filter(a => a.status === 'in_stock').length;
+      const takenOut   = allAssets.filter(a => a.status === 'taken_out').length;
+      const decomposed = allAssets.filter(a => a.status === 'decomposed').length;
+
+      document.getElementById('stat-total').textContent  = total;
+      document.getElementById('stat-instock').textContent = inStock;
+      document.getElementById('stat-out').textContent     = takenOut;
+      document.getElementById('stat-decomp').textContent  = decomposed;
+    }
+
+    // ---------- FILTERS ----------
+    function applyStatusFilter(status, el) {
+      document.querySelectorAll('.stat-item').forEach(s => s.classList.remove('active-filter'));
+      if (currentStatusFilter === status) {
+        currentStatusFilter = null;
+      } else {
+        currentStatusFilter = status;
+        if (el) el.classList.add('active-filter');
+      }
+      renderTable();
+    }
+
+    function applySearch() {
+      searchKeyword = document.getElementById('searchKeyword').value.toLowerCase().trim();
+      renderTable();
+    }
+
+    // ---------- ADD ----------
+    function openAddModal() {
+      if (!canManage()) { alert('Only technicians and admins can add assets.'); return; }
+      document.getElementById('newPart').value = '';
+      document.getElementById('newSerial').value = '';
+      document.getElementById('newCategory').value = '';
+      document.getElementById('newDesc').value = '';
+      document.getElementById('newRack').value = '';
+      document.getElementById('addModal').classList.add('show');
+      setTimeout(() => document.getElementById('newPart').focus(), 100);
+    }
+    function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
+
+    async function saveAsset() {
+      if (!canManage()) { alert('Only technicians and admins can add assets.'); return; }
+      const part     = document.getElementById('newPart').value.trim();
+      const serial   = document.getElementById('newSerial').value.trim();
+      const category = document.getElementById('newCategory').value;
+      const desc     = document.getElementById('newDesc').value.trim();
+      const rack     = document.getElementById('newRack').value.trim();
+
+      if (!part || !serial || !category) {
+        alert('⚠️ Item name, serial number, and category are required.');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveAsset');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '⏳ Saving…';
+
+      try {
+        const res = await fetch('/api/assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ part, serial, category, description: desc, rack })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save');
+        alert(`✅ Asset "${data.part}" added.`);
+        closeAddModal();
+        await loadAssets();
+      } catch (e) {
+        alert('❌ ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    // ---------- TAKE OUT ----------
+    function openTakeoutModal(id) {
+      if (!canManage()) return;
+      const asset = allAssets.find(a => a.asset_id === id);
+      if (!asset) return;
+      takeoutTarget = asset;
+
+      document.getElementById('takeoutInfo').innerHTML = `
+        <b>#${asset.asset_id}</b> — ${escapeHtml(asset.part || '—')}<br/>
+        Serial: <b style="font-family:'Consolas',monospace;">${escapeHtml(asset.serial || '—')}</b><br/>
+        Category: ${escapeHtml(asset.category || '—')} &nbsp;|&nbsp; Rack: ${escapeHtml(asset.rack || '—')}
+      `;
+
+      document.getElementById('takeoutBy').value = '';
+      document.getElementById('takeoutNotes').value = '';
+      document.getElementById('takeoutModal').classList.add('show');
+      setTimeout(() => document.getElementById('takeoutBy').focus(), 100);
+    }
+    function closeTakeoutModal() {
+      document.getElementById('takeoutModal').classList.remove('show');
+      takeoutTarget = null;
+    }
+
+    async function confirmTakeout() {
+      if (!takeoutTarget) return;
+      const taken_out_by = document.getElementById('takeoutBy').value.trim();
+      const notes = document.getElementById('takeoutNotes').value.trim();
+      if (!taken_out_by) { alert('⚠️ Please enter who is taking this asset out.'); return; }
+
+      const btn = document.getElementById('btnConfirmTakeout');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '⏳ Processing…';
+
+      try {
+        const res = await fetch(`/api/assets/${takeoutTarget.asset_id}/takeout`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ taken_out_by, notes })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        alert('✅ ' + data.message);
+        closeTakeoutModal();
+        await loadAssets();
+      } catch (e) {
+        alert('❌ ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    // ---------- RETURN ----------
+    function openReturnModal(id) {
+      if (!canManage()) return;
+      const asset = allAssets.find(a => a.asset_id === id);
+      if (!asset) return;
+      returnTarget = asset;
+
+      document.getElementById('returnInfo').innerHTML = `
+        <b>#${asset.asset_id}</b> — ${escapeHtml(asset.part || '—')}<br/>
+        Serial: <b style="font-family:'Consolas',monospace;">${escapeHtml(asset.serial || '—')}</b><br/>
+        Currently taken out by: <b>${escapeHtml(asset.taken_out_by || '—')}</b>
+      `;
+      document.getElementById('returnModal').classList.add('show');
+    }
+    function closeReturnModal() {
+      document.getElementById('returnModal').classList.remove('show');
+      returnTarget = null;
+    }
+
+    async function confirmReturn() {
+      if (!returnTarget) return;
+      const btn = document.getElementById('btnConfirmReturn');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '⏳ Processing…';
+
+      try {
+        const res = await fetch(`/api/assets/${returnTarget.asset_id}/return`, {
+          method: 'PATCH',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        alert('✅ ' + data.message);
+        closeReturnModal();
+        await loadAssets();
+      } catch (e) {
+        alert('❌ ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    // ---------- DECOMPOSE ----------
+    function openDecomposeModal(id) {
+      if (!canManage()) return;
+      const asset = allAssets.find(a => a.asset_id === id);
+      if (!asset) return;
+      decomposeTarget = asset;
+
+      document.getElementById('decomposeInfo').innerHTML = `
+        <b>#${asset.asset_id}</b> — ${escapeHtml(asset.part || '—')}<br/>
+        Serial: <b style="font-family:'Consolas',monospace;">${escapeHtml(asset.serial || '—')}</b><br/>
+        Category: ${escapeHtml(asset.category || '—')} &nbsp;|&nbsp; Rack: ${escapeHtml(asset.rack || '—')}
+      `;
+      document.getElementById('decomposeNotes').value = '';
+      document.getElementById('decomposeModal').classList.add('show');
+    }
+    function closeDecomposeModal() {
+      document.getElementById('decomposeModal').classList.remove('show');
+      decomposeTarget = null;
+    }
+
+    async function confirmDecompose() {
+      if (!decomposeTarget) return;
+      const notes = document.getElementById('decomposeNotes').value.trim();
+      const btn = document.getElementById('btnConfirmDecompose');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '⏳ Processing…';
+
+      try {
+        const res = await fetch(`/api/assets/${decomposeTarget.asset_id}/decompose`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ notes })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        alert('✅ ' + data.message);
+        closeDecomposeModal();
+        await loadAssets();
+      } catch (e) {
+        alert('❌ ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    // ---------- INFO MODAL ----------
+    async function openInfoModal(id) {
+      const modal = document.getElementById('infoModal');
+      const body = document.getElementById('infoBody');
+      body.innerHTML = `<div class="tl-empty">⏳ Loading…</div>`;
+      modal.classList.add('show');
+
+      try {
+        const res = await fetch(`/api/assets/${id}/history`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load history');
+        const { asset, history } = await res.json();
+
+        // Header details
+        const statusLabel = asset.status === 'in_stock' ? 'In Stock'
+                          : asset.status === 'taken_out' ? 'Taken Out'
+                          : 'Decomposed';
+
+        const detailsHtml = `
+          <div class="info-section">
+            <div class="info-section-title">📦 Item Information</div>
+            <div class="info-grid">
+              <span class="ig-label">Item Name</span>    <span class="ig-value"><strong>${escapeHtml(asset.part || '—')}</strong></span>
+              <span class="ig-label">Serial</span>       <span class="ig-value mono">${escapeHtml(asset.serial || '—')}</span>
+              <span class="ig-label">Category</span>     <span class="ig-value">${escapeHtml(asset.category || '—')}</span>
+              <span class="ig-label">Description</span>  <span class="ig-value">${escapeHtml(asset.description || '—')}</span>
+              <span class="ig-label">Rack</span>         <span class="ig-value">${escapeHtml(asset.rack || '—')}</span>
+              <span class="ig-label">Status</span>       <span class="ig-value"><span class="status-badge ${escapeAttr(asset.status)}">${escapeHtml(statusLabel)}</span></span>
+              <span class="ig-label">Added</span>        <span class="ig-value">${formatDateTime(asset.added_at)}</span>
+              <span class="ig-label">Added By</span>     <span class="ig-value">${escapeHtml(asset.added_by_name || '—')}</span>
+            </div>
+          </div>
+        `;
+
+        // Timeline
+        let timelineHtml = '';
+        if (!history || history.length === 0) {
+          timelineHtml = `<div class="tl-empty">No events recorded yet.</div>`;
+        } else {
+          timelineHtml = history.map(h => {
+            const actionKey = (h.action || '').replace('asset.', '');
+            let label = actionKey;
+            let dotClass = 'added';
+            if (actionKey === 'added')      { label = 'Added';     dotClass = 'added'; }
+            else if (actionKey === 'taken_out')  { label = 'Taken Out'; dotClass = 'taken_out'; }
+            else if (actionKey === 'returned')   { label = 'Returned';  dotClass = 'returned'; }
+            else if (actionKey === 'decomposed') { label = 'Decomposed';dotClass = 'decomposed'; }
+
+            const when = formatDateTime(h.created_at);
+            const who  = h.user_name || '—';
+            const role = h.user_role ? ` (${h.user_role})` : '';
+
+            return `
+              <div class="tl-item">
+                <span class="tl-dot ${dotClass}"></span>
+                <div class="tl-head">
+                  <span class="tl-action">${escapeHtml(label)}</span>
+                  <span class="tl-date">${when}</span>
+                </div>
+                <div class="tl-meta">by <b>${escapeHtml(who)}</b>${escapeHtml(role)}</div>
+                ${h.notes ? `<div class="tl-notes">${escapeHtml(h.notes)}</div>` : ''}
+              </div>
+            `;
+          }).join('');
+        }
+
+        body.innerHTML = `
+          ${detailsHtml}
+          <div class="info-section">
+            <div class="info-section-title">📜 Activity Timeline (${history.length})</div>
+            <div class="timeline">${timelineHtml}</div>
+          </div>
+        `;
+      } catch (e) {
+        body.innerHTML = `<div class="tl-empty">❌ ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    function closeInfoModal() {
+      document.getElementById('infoModal').classList.remove('show');
+    }
+
+    // ---------- HELPERS ----------
+    function formatDateTime(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      if (isNaN(d)) return '—';
+      const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      return `${dateStr} · ${timeStr}`;
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function escapeAttr(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    // ---------- PAGE LOAD ----------
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('searchKeyword').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') applySearch();
+      });
+      // Close info modal when clicking outside
+      document.getElementById('infoModal').addEventListener('click', function (e) {
+        if (e.target === this) closeInfoModal();
+      });
+    });
+  </script>
+  <script>
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  </script>
+</body>
+</html>

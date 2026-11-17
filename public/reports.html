@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TSD WMS | Reports</title>
+  <script src="/theme.js"></script>
+  <script src="/sidebar.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-body:#0b0e14; --bg-sidebar:#141a24; --bg-main:#0f131a; --bg-card:#181f2b;
+      --bg-elevated:#1f2a3a; --bg-header:#111820; --bg-hover:#1a2332;
+      --border:#2a3344; --border-soft:#252f3f; --border-row:#1f2a3a;
+      --text-primary:#e2e8f0; --text-secondary:#cbd5e0; --text-muted:#7a8ba3; --text-dim:#a0b3cc;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+    [data-theme="light"] {
+      --bg-body:#f1f5f9; --bg-sidebar:#ffffff; --bg-main:#f8fafc; --bg-card:#ffffff;
+      --bg-elevated:#f1f5f9; --bg-header:#f8fafc; --bg-hover:#f1f5f9;
+      --border:#e2e8f0; --border-soft:#e2e8f0; --border-row:#f1f5f9;
+      --text-primary:#0f172a; --text-secondary:#334155; --text-muted:#64748b; --text-dim:#475569;
+      --accent:#ef4444; --accent-hover:#dc2626; --accent-text:#ffffff;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+
+    body {
+      background:var(--bg-body); display:flex; height:100vh;
+      color:var(--text-primary); overflow:hidden;
+      transition:background .2s ease, color .2s ease;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+  width: 240px;
+  background: #232c36;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #333333;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+/* Brand block */
+.sidebar-brand {
+  text-align: center;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.brand-logo-wrap {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+  display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.brand-divider {
+  width: 50px;
+  height: 2px;
+  background: #ffffff;
+  margin: 10px auto 12px;
+  border-radius: 1px;
+  opacity: 0.6;
+}
+
+.brand-dept {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.brand-tagline {
+  font-size: 9px;
+  color: #ffffff;
+  letter-spacing: 0.6px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Nav buttons */
+.side-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-bottom: 4px;
+  font-family: inherit;
+  position: relative;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -8px;               /* negative so scrollbar doesn't clip buttons */
+  padding: 0 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 5px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Hover = red with 40% opacity */
+.side-btn:hover {
+  background: rgba(121, 121, 121, 0.4);
+  color: #ffffff;
+}
+
+/* Active button */
+.side-btn.active {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+.side-btn.active:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Icons */
+.side-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  stroke-width: 1.8;
+  color: inherit;
+  stroke: currentColor;
+}
+
+/* Logout button */
+.logout-btn {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 16px;
+  color: #ffffff;
+}
+
+.logout-btn:hover {
+  background: rgba(220, 38, 38, 0.4);
+  color: #ffffff;
+}
+
+    /* Collapsed state overrides */
+    .sidebar.collapsed {
+      width: 70px;
+      padding: 30px 10px;
+    }
+    .sidebar.collapsed .brand-dept,
+    .sidebar.collapsed .brand-tagline,
+    .sidebar.collapsed .brand-divider {
+      display: none;
+    }
+    .sidebar.collapsed .sidebar-brand {
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    .sidebar.collapsed .brand-logo-wrap {
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 0;
+    }
+    .sidebar.collapsed .brand-logo {
+      max-width: 44px;
+    }
+
+    /* MAIN */
+    .main { flex:1; padding:24px 32px; overflow-y:auto; background:var(--bg-main); display:flex; flex-direction:column; }
+    .main-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    .main-header h1 { font-size:24px; font-weight:300; letter-spacing:1px; color:var(--text-primary); }
+    .main-header .header-right { display:flex; align-items:center; gap:14px; }
+    .main-header .user-badge { background:var(--bg-elevated); padding:8px 18px; border-radius:30px; font-size:14px; color:var(--text-dim); border:1px solid var(--border); display:flex; align-items:center; gap:6px; text-transform:uppercase; }
+    .main-header .user-badge span { color:inherit; }
+    .main-header .user-badge .role-tag { color:var(--text-primary); border-radius:12px; font-size:13.5px; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+
+    /* TABS */
+    .tabs { display:flex; gap:4px; margin-bottom:18px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    .tab-btn { background:transparent; border:none; padding:11px 20px; color:var(--text-muted); cursor:pointer; font-size:14px; font-weight:600; border-bottom:2px solid transparent; transition:.2s; font-family:inherit; display:inline-flex; align-items:center; gap:7px; }
+    .tab-btn:hover { color:var(--text-primary); }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-btn svg { width:16px; height:16px; }
+
+    /* FILTER BAR */
+    .filter-bar {
+      background:var(--bg-card); border:1px solid var(--border-soft); border-radius:12px;
+      padding:14px 18px; margin-bottom:18px;
+      display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;
+    }
+    .filter-group { display:flex; flex-direction:column; gap:4px; flex:1 1 150px; min-width:140px; }
+    .filter-group label { color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+    .filter-group input, .filter-group select {
+      background:var(--bg-elevated); color:var(--text-primary); border:1px solid var(--border);
+      padding:7px 11px; border-radius:6px; font-size:13px; font-family:inherit; width:100%;
+    }
+    .filter-group input:focus, .filter-group select:focus { outline:none; border-color:var(--accent); }
+    .filter-actions { display:flex; gap:8px; align-items:center; }
+    .btn-apply { background:var(--accent); color:#fff; border:none; padding:8px 20px; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; transition:.2s; }
+    .btn-apply:hover { background:var(--accent-hover); }
+    .btn-reset { background:var(--bg-elevated); color:var(--text-dim); border:1px solid var(--border); padding:8px 16px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit; }
+    .btn-reset:hover { background:var(--border); color:var(--text-primary); }
+
+    /* TAB CONTENT */
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    /* STATS ROW */
+    .stats-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px; margin-bottom:18px; }
+    .stat-card { background:var(--bg-card); border:1px solid var(--border-soft); border-radius:12px; padding:16px 18px; }
+    .stat-card .stat-value { font-size:28px; font-weight:700; color:var(--text-primary); line-height:1.1; }
+    .stat-card .stat-label { font-size:11px; text-transform:uppercase; color:var(--text-muted); letter-spacing:1px; margin-top:4px; }
+    .stat-card.green .stat-value { color:#22c55e; }
+    .stat-card.amber .stat-value { color:#f59e0b; }
+    .stat-card.red   .stat-value { color:#ef4444; }
+    .stat-card.blue  .stat-value { color:#3b82f6; }
+    .stat-card.cyan  .stat-value { color:#06b6d4; }
+    .stat-card.purple .stat-value { color:#8b5cf6; }
+
+    /* CHART CARDS */
+    .charts-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-bottom:18px; }
+    .chart-card { background:var(--bg-card); border:1px solid var(--border-soft); border-radius:12px; padding:18px 20px; min-height:320px; display:flex; flex-direction:column; }
+    .chart-card h3 { color:var(--text-primary); font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:14px; }
+    .chart-card .chart-wrap { flex:1; position:relative; min-height:0; }
+
+    /* DATA TABLES */
+    .table-card { background:var(--bg-card); border:1px solid var(--border-soft); border-radius:12px; overflow:hidden; margin-bottom:18px; }
+    .table-card h3 { padding:16px 20px; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-primary); border-bottom:1px solid var(--border-soft); background:var(--bg-header); margin:0; }
+    .table-scroll { max-height:420px; overflow:auto; }
+    .table-scroll::-webkit-scrollbar { width:8px; height:8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { text-align:left; padding:11px 16px; background:var(--bg-header); color:var(--text-muted); text-transform:uppercase; font-size:10.5px; letter-spacing:1px; border-bottom:1px solid var(--border-soft); position:sticky; top:0; z-index:2; white-space:nowrap; }
+    td { padding:11px 16px; border-bottom:1px solid var(--border-row); color:var(--text-secondary); }
+    tr:hover td { background:var(--bg-hover); }
+    .empty-row td { text-align:center; padding:30px; color:var(--text-muted); font-style:italic; }
+
+    .badge { padding:2px 10px; border-radius:20px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.3px; display:inline-block; }
+    .badge.green { background:rgba(34,197,94,.15); color:#22c55e; }
+    .badge.amber { background:rgba(245,158,11,.15); color:#f59e0b; }
+    .badge.red   { background:rgba(239,68,68,.15); color:#ef4444; }
+    .badge.blue  { background:rgba(59,130,246,.15); color:#3b82f6; }
+    .badge.gray  { background:var(--bg-elevated); color:var(--text-muted); }
+
+    .loading { padding:40px; text-align:center; color:var(--text-muted); font-style:italic; }
+
+    /* TOAST */
+    .toast { position:fixed; top:30px; right:30px; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border); border-left:4px solid #22c55e; padding:12px 20px; border-radius:10px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.4); transform:translateX(400px); transition:.3s; z-index:99999; max-width:380px; }
+    .toast.show { transform:translateX(0); }
+    .toast.error { border-left-color:var(--accent); }
+
+    @media (max-width:768px) {
+      .sidebar { width:70px; padding:20px 10px; }
+      .sidebar .logo, .sidebar .logo-sub, .sidebar .side-btn span:not(.email-badge) { display:none; }
+      .main { padding:16px; }
+      .filter-bar { flex-direction:column; align-items:stretch; }
+      .filter-actions { justify-content:stretch; }
+      .filter-actions button { flex:1; }
+    }
+
+    /* ============================================================
+   SO REQUESTS MODAL — centered, blurred backdrop
+   ============================================================ */
+.so-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: soFadeIn 0.2s ease;
+}
+.so-modal-overlay.show { display: flex; }
+
+@keyframes soFadeIn {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to   { opacity: 1; backdrop-filter: blur(8px); }
+}
+
+.so-modal-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1000px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  animation: soScaleIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  overflow: hidden;
+}
+
+@keyframes soScaleIn {
+  from { transform: scale(0.95) translateY(10px); opacity: 0; }
+  to   { transform: scale(1)    translateY(0);    opacity: 1; }
+}
+
+/* Header */
+.so-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-header);
+  flex-shrink: 0;
+}
+.so-modal-title {
+  font-size: 18px;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
+}
+.so-modal-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.so-modal-close {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.so-modal-close:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+.so-modal-close svg { width: 18px; height: 18px; stroke-width: 2; }
+
+/* Body */
+.so-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  min-height: 0;
+}
+.so-modal-body::-webkit-scrollbar { width: 8px; }
+.so-modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.so-modal-section { margin-bottom: 24px; }
+.so-modal-section:last-child { margin-bottom: 0; }
+.so-modal-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.so-modal-section-title svg { width: 14px; height: 14px; stroke-width: 2.2; }
+
+/* User chips */
+.so-users-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.so-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  transition: 0.15s;
+}
+.so-user-chip:hover { border-color: var(--accent); }
+.so-user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.so-user-info { display: flex; flex-direction: column; gap: 2px; }
+.so-user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.so-user-meta { font-size: 11px; color: var(--text-muted); }
+
+.so-empty-hint {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+  width: 100%;
+}
+
+/* Requests table */
+.so-modal-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 45vh;
+}
+.so-modal-table-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+.so-modal-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.so-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 800px;
+}
+.so-modal-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--bg-header);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+.so-modal-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-row);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+.so-modal-table tr:hover td { background: var(--bg-hover); }
+.so-modal-table .empty-row td {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 30px;
+}
+
+/* Footer */
+.so-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--bg-header);
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+.so-modal-btn {
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  padding: 10px 28px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: 0.15s;
+}
+.so-modal-btn:hover { background: var(--accent-hover); }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .so-modal-overlay { padding: 12px; }
+  .so-modal-box { max-height: 95vh; }
+  .so-modal-head { padding: 16px; }
+  .so-modal-body { padding: 16px; }
+  .so-modal-table-wrap { max-height: 40vh; }
+}
+  </style>
+<link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+    <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="sidebar-brand">
+      <div class="brand-logo-wrap">
+        <img src="img/logo.png" alt="Examedia" class="brand-logo" />
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-dept">TSD WMS</div>
+      <div class="brand-tagline">Technical Support Department</div>
+      <div class="brand-tagline">Warehouse Management System</div>
+    </div>
+
+    <!-- NAVIGATION -->
+     <div class="sidebar-nav">
+    <button class="side-btn" onclick="location.href='/dashboard.html'"><i data-lucide="layout-dashboard"></i> <span>Dashboard</span></button>
+    <button class="side-btn" onclick="location.href='/reports.html'"><i data-lucide="bar-chart-3"></i> <span>Reports</span></button>
+    <button class="side-btn" onclick="location.href='/inventory.html'"><i data-lucide="package"></i> <span>Inventory List</span></button>
+    <button class="side-btn" onclick="location.href='/assets.html'"><i data-lucide="hard-drive"></i> <span>Assets</span></button>
+    <button class="side-btn" onclick="location.href='/loans.html'"><i data-lucide="arrow-right-left"></i> <span>Loan Tracking</span></button>
+    <button class="side-btn" onclick="location.href='/requests.html'"><i data-lucide="inbox"></i> <span>Requests</span></button>
+    <button class="side-btn" onclick="location.href='/finance.html'"><i data-lucide="shopping-cart"></i> <span>Procurement</span></button>
+    <button class="side-btn active" onclick="location.href='/so-codes.html'"><i data-lucide="file-text"></i> <span>SO Codes</span></button>
+    <button class="side-btn" onclick="location.href='/audit.html'"><i data-lucide="search"></i> <span>Audit</span></button>
+    <button class="side-btn" onclick="location.href='/emails.html'"><i data-lucide="mail"></i> <span>Emails</span></button>
+    <button class="side-btn" onclick="location.href='/users.html'"><i data-lucide="users"></i> <span>Users</span></button>
+    <button class="side-btn" onclick="location.href='/settings.html'"><i data-lucide="settings"></i> <span>Settings</span></button>
+    <button class="side-btn logout-btn" onclick="logout()"><i data-lucide="log-out"></i> <span>Logout</span></button>
+     </div>
+
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <div class="main-header">
+      <h1 style="font-weight:bold;">Reports &amp; Analytics</h1>
+      <div class="header-right">
+        <div id="notificationBell"></div>
+        <div class="user-badge">
+          👤 Welcome, <span id="userName">…</span>
+          <span class="role-tag" id="userRole"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overview"><i data-lucide="layout-grid"></i> Overview</button>
+      <button class="tab-btn" data-tab="inventory"><i data-lucide="package"></i> Inventory</button>
+      <button class="tab-btn" data-tab="assets"><i data-lucide="hard-drive"></i> Assets</button>
+      <button class="tab-btn" data-tab="requests"><i data-lucide="inbox"></i> Requests</button>
+      <button class="tab-btn" data-tab="loans"><i data-lucide="arrow-right-left"></i> Loans</button>
+      <button class="tab-btn" data-tab="so-usage"><i data-lucide="file-text"></i> SO Code Usage</button>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>From</label>
+        <input type="date" id="fFrom" />
+      </div>
+      <div class="filter-group">
+        <label>To</label>
+        <input type="date" id="fTo" />
+      </div>
+      <div class="filter-group">
+        <label>Client</label>
+        <select id="fClient"><option value="">All clients</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Category</label>
+        <select id="fCategory"><option value="">All categories</option></select>
+      </div>
+      <div class="filter-actions">
+        <button class="btn-apply" onclick="applyFilters()">Apply</button>
+        <button class="btn-reset" onclick="resetFilters()">Reset</button>
+      </div>
+    </div>
+
+    <!-- TAB: OVERVIEW -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="stats-row" id="ovStats">
+        <div class="loading">Loading…</div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>📦 Inventory by Category (units)</h3>
+          <div class="chart-wrap"><canvas id="ovChartInv"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>📨 Requests by Status</h3>
+          <div class="chart-wrap"><canvas id="ovChartReq"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>🔁 Loans Overview</h3>
+          <div class="chart-wrap"><canvas id="ovChartLoans"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: INVENTORY -->
+    <div class="tab-content" id="tab-inventory">
+      <div class="stats-row" id="invStats">
+        <div class="loading">Loading…</div>
+      </div>
+
+      <div class="table-card">
+        <h3>📊 Breakdown by Category</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Category</th><th>Items</th><th>Units</th><th>Clients</th><th>Low Stock</th></tr></thead>
+            <tbody id="invByCat"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h3>🏢 Breakdown by Client</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Client / Site</th><th>Items</th><th>Units</th><th>Categories</th></tr></thead>
+            <tbody id="invByClient"><tr class="empty-row"><td colspan="4">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h3>⚠️ Low Stock Items (qty ≤ 5)</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>ID</th><th>Client</th><th>Category</th><th>Part</th><th>Serial</th><th>Description</th><th>Qty</th><th>Rack</th></tr></thead>
+            <tbody id="invLowStock"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+            <!-- ⭐ DECOMPOSED ITEMS -->
+      <div class="table-card">
+        <h3>🗑️ Decomposed Items <span id="decomposedCount" style="color:var(--text-muted); font-weight:400; font-size:12px; margin-left:8px;">(0 total)</span></h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Serial</th>
+                <th>Part</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Client</th>
+                <th>Rack</th>
+                <th>SO Code</th>
+                <th>Removed On</th>
+                <th>Removed By</th>
+              </tr>
+            </thead>
+            <tbody id="invDecomposed"><tr class="empty-row"><td colspan="9">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB: REQUESTS -->
+    <div class="tab-content" id="tab-requests">
+      <div class="stats-row" id="reqStats">
+        <div class="loading">Loading…</div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>📊 Requests by Status</h3>
+          <div class="chart-wrap"><canvas id="reqChartStatus"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>🏷️ Requests by Type</h3>
+          <div class="chart-wrap"><canvas id="reqChartType"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>📈 Monthly Trend (last 6 months)</h3>
+          <div class="chart-wrap"><canvas id="reqChartMonthly"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h3>👥 Top Requesters</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Requester</th><th>Requests</th></tr></thead>
+            <tbody id="reqTopRequesters"><tr class="empty-row"><td colspan="2">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: LOANS -->
+    <div class="tab-content" id="tab-loans">
+      <div class="stats-row" id="loanStats">
+        <div class="loading">Loading…</div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>📊 Loans by Status</h3>
+          <div class="chart-wrap"><canvas id="loanChartStatus"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>📈 Monthly Trend (last 6 months)</h3>
+          <div class="chart-wrap"><canvas id="loanChartMonthly"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h3>🏆 Top Customers by Loans</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Customer</th><th>Total Loans</th><th>Total Charges (RM)</th></tr></thead>
+            <tbody id="loanTopCustomers"><tr class="empty-row"><td colspan="3">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+        <!-- TAB: ASSETS -->
+    <div class="tab-content" id="tab-assets">
+      <div class="stats-row" id="assetStats">
+        <div class="loading">Loading…</div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>🗄️ Assets by Category</h3>
+          <div class="chart-wrap"><canvas id="assetChartCategory"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 Assets by Status</h3>
+          <div class="chart-wrap"><canvas id="assetChartStatus"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h3>📋 Breakdown by Category</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Total</th>
+                <th>In Stock</th>
+                <th>Taken Out</th>
+                <th>Decomposed</th>
+              </tr>
+            </thead>
+            <tbody id="assetByCategory">
+              <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h3>🕒 Recently Added Assets</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Item Name</th>
+                <th>Serial</th>
+                <th>Category</th>
+                <th>Rack</th>
+                <th>Status</th>
+                <th>Added</th>
+              </tr>
+            </thead>
+            <tbody id="assetRecent">
+              <tr class="empty-row"><td colspan="7">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: SO CODE USAGE -->
+<div class="tab-content" id="tab-so-usage">
+  <div class="stats-row" id="soUsageStats">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <div class="filter-bar" style="margin-bottom:16px;">
+    <div class="filter-group">
+      <label>Search SO</label>
+      <input type="text" id="soUsageSearch" placeholder="SO number or customer…" />
+    </div>
+    <div class="filter-group">
+      <label>Status</label>
+      <select id="soUsageStatus">
+        <option value="">All</option>
+        <option value="OPEN">OPEN</option>
+        <option value="CLOSED">CLOSED</option>
+        <option value="CANCELLED">CANCELLED</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>From</label>
+      <input type="date" id="soUsageFrom" />
+    </div>
+    <div class="filter-group">
+      <label>To</label>
+      <input type="date" id="soUsageTo" />
+    </div>
+    <div class="filter-actions">
+      <button class="btn-apply" onclick="loadSOUsageReport()">Apply</button>
+      <button class="btn-reset" onclick="resetSOUsageFilters()">Reset</button>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <h3>SO Codes with Request Activity</h3>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>SO Code</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th style="text-align:right;">Requests</th>
+            <th style="text-align:right;">Users</th>
+            <th style="text-align:right;">Total Spent (RM)</th>
+            <th style="text-align:center;">Detail</th>
+          </tr>
+        </thead>
+        <tbody id="soUsageBody">
+          <tr class="empty-row"><td colspan="7">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/notifications.js"></script>
+  <script src="/logout.js"></script>
+  <script src="/escape.js"></script> 
+  <script>
+    // ---------- STATE ----------
+    let currentUser = null;
+    let activeTab = 'overview';
+    const filters = { from: '', to: '', client: '', category: '' };
+    const charts = {};
+
+    const COLORS = ['#ef4444', '#facc15', '#22c55e', '#3b82f6', '#f97316', '#8b5cf6', '#14b8a6', '#f59e0b', '#06b6d4', '#d946ef'];
+
+    // ---------- AUTH ----------
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.user) { window.location.href = '/login.html'; return null; }
+        currentUser = data.user;
+        if (!['admin', 'manager', 'finance'].includes(currentUser.role)) {
+          alert('🔒 Reports are available to admin, manager, and finance only.');
+          window.location.href = '/dashboard.html';
+          return null;
+        }
+        document.getElementById('userName').textContent = currentUser.full_name || currentUser.username;
+        document.getElementById('userRole').textContent = currentUser.role;
+        document.getElementById('userRole').className = 'role-tag ' + currentUser.role;
+        return currentUser;
+      } catch (e) { window.location.href = '/login.html'; return null; }
+    }
+
+    // ---------- TABS ----------
+    function setupTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+
+      // Update URL for deep-linking
+      const url = new URL(location);
+      url.searchParams.set('tab', tab);
+      history.replaceState({}, '', url);
+
+      loadTabData();
+    }
+
+    function tabFromUrl() {
+  const t = new URLSearchParams(location.search).get('tab');
+  return ['overview', 'inventory', 'assets', 'requests', 'loans', 'so-usage'].includes(t) ? t : 'overview';
+}
+
+    // ---------- FILTERS ----------
+    function buildQuery() {
+      const p = new URLSearchParams();
+      if (filters.from)     p.set('from', filters.from);
+      if (filters.to)       p.set('to', filters.to);
+      if (filters.client)   p.set('client', filters.client);
+      if (filters.category) p.set('category', filters.category);
+      return p.toString() ? '?' + p.toString() : '';
+    }
+
+    function applyFilters() {
+      filters.from     = document.getElementById('fFrom').value;
+      filters.to       = document.getElementById('fTo').value;
+      filters.client   = document.getElementById('fClient').value;
+      filters.category = document.getElementById('fCategory').value;
+      loadTabData();
+    }
+
+    function resetFilters() {
+      document.getElementById('fFrom').value = '';
+      document.getElementById('fTo').value = '';
+      document.getElementById('fClient').value = '';
+      document.getElementById('fCategory').value = '';
+      filters.from = filters.to = filters.client = filters.category = '';
+      loadTabData();
+    }
+
+    // ---------- LOAD FILTER OPTIONS ----------
+    async function loadFilterOptions() {
+      try {
+        const [clientsRes, invRes] = await Promise.all([
+          fetch('/api/clients', { credentials: 'include' }),
+          fetch('/api/inventory', { credentials: 'include' })
+        ]);
+        const clients = await clientsRes.json();
+        const inv = await invRes.json();
+
+        const clientSel = document.getElementById('fClient');
+        clients.forEach(c => clientSel.innerHTML += `<option value="${c}">${c}</option>`);
+
+        const cats = [...new Set(inv.map(i => i.category).filter(Boolean))].sort();
+        const catSel = document.getElementById('fCategory');
+        cats.forEach(c => catSel.innerHTML += `<option value="${c}">${c}</option>`);
+      } catch (e) { console.error('Filter options failed:', e); }
+    }
+
+    // ---------- LOAD TAB DATA ----------
+    async function loadTabData() {
+  try {
+    if (activeTab === 'overview')  await loadOverview();
+    if (activeTab === 'inventory') await loadInventoryReport();
+    if (activeTab === 'assets')    await loadAssetsReport();
+    if (activeTab === 'requests')  await loadRequestsReport();
+    if (activeTab === 'loans')     await loadLoansReport();
+    if (activeTab === 'so-usage')  await loadSOUsageReport();
+  } catch (e) {
+    console.error('Load tab failed:', e);
+    showToast('❌ ' + e.message, true);
+  }
+}
+
+    // ---------- OVERVIEW ----------
+    async function loadOverview() {
+      const res = await fetch('/api/reports/overview', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load overview');
+      const d = await res.json();
+
+      const inv = d.inventory, loans = d.loans, reqs = d.requests;
+
+      document.getElementById('ovStats').innerHTML = `
+        <div class="stat-card green">
+          <div class="stat-value">${inv.units}</div>
+          <div class="stat-label">Total Units in Stock</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-value">${inv.items}</div>
+          <div class="stat-label">Inventory Items</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-value">${inv.clients}</div>
+          <div class="stat-label">Clients / Sites</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-value">${inv.low_stock}</div>
+          <div class="stat-label">Low Stock Items</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-value">${loans.active}</div>
+          <div class="stat-label">Active Loans</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-value">${loans.overdue}</div>
+          <div class="stat-label">Overdue Loans</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-value">${reqs.pending}</div>
+          <div class="stat-label">Pending Requests</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-value">${reqs.completed}</div>
+          <div class="stat-label">Completed Requests</div>
+        </div>
+      `;
+
+      // Chart 1: inventory by category (doughnut)
+      makeChart('ovChartInv', 'doughnut', {
+        labels: d.inventory_by_category.map(r => r.category || 'Other'),
+        datasets: [{
+          data: d.inventory_by_category.map(r => r.units),
+          backgroundColor: COLORS,
+          borderWidth: 0
+        }]
+      }, { cutout: '60%' });
+
+      // Chart 2: requests by status (bar)
+      makeChart('ovChartReq', 'bar', {
+        labels: d.requests_by_status.map(r => r.status.replace(/_/g, ' ')),
+        datasets: [{
+          label: 'Requests',
+          data: d.requests_by_status.map(r => r.count),
+          backgroundColor: '#3b82f6',
+          borderRadius: 6
+        }]
+      }, { scales: { y: { beginAtZero: true, ticks: { color: '#a0b3cc', precision: 0 }, grid: { color: '#252f3f' } }, x: { ticks: { color: '#a0b3cc', font: { size: 10 } }, grid: { display: false } } }, plugins: { legend: { display: false } } });
+
+      // Chart 3: loans (doughnut)
+      makeChart('ovChartLoans', 'doughnut', {
+        labels: ['Active', 'Overdue', 'Returned'],
+        datasets: [{
+          data: [loans.active, loans.overdue, loans.returned],
+          backgroundColor: ['#22c55e', '#ef4444', '#64748b'],
+          borderWidth: 0
+        }]
+      }, { cutout: '60%' });
+    }
+
+    // ---------- INVENTORY REPORT ----------
+    async function loadInventoryReport() {
+      const res = await fetch('/api/reports/inventory' + buildQuery(), { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load inventory report');
+      const d = await res.json();
+
+      const t = d.totals;
+      document.getElementById('invStats').innerHTML = `
+        <div class="stat-card blue"><div class="stat-value">${t.items}</div><div class="stat-label">Items</div></div>
+        <div class="stat-card green"><div class="stat-value">${t.units}</div><div class="stat-label">Total Units</div></div>
+        <div class="stat-card purple"><div class="stat-value">${t.clients}</div><div class="stat-label">Clients</div></div>
+        <div class="stat-card cyan"><div class="stat-value">${t.categories}</div><div class="stat-label">Categories</div></div>
+        <div class="stat-card amber"><div class="stat-value">${t.low_stock}</div><div class="stat-label">Low Stock Items</div></div>
+        <div class="stat-card amber"><div class="stat-value">${t.decomposed}</div><div class="stat-label">Decomposed</div></div>
+      `;
+
+      document.getElementById('invByCat').innerHTML = d.by_category.length
+        ? d.by_category.map(r => `<tr>
+            <td>${escapeHtml(r.category || '—')}</td>
+            <td>${r.items}</td>
+            <td><strong>${r.units}</strong></td>
+            <td>${escapeHtml(r.client || '—')}</td> 
+            <td>${r.low_stock ? `<span class="badge red">${r.low_stock}</span>` : '—'}</td>
+          </tr>`).join('')
+        : `<tr class="empty-row"><td colspan="5">No data.</td></tr>`;
+
+      document.getElementById('invByClient').innerHTML = d.by_client.length
+        ? d.by_client.map(r => `<tr>
+            <td>${escapeHtml(r.client || '—')}</td>
+            <td>${r.items}</td>
+            <td><strong>${r.units}</strong></td>
+            <td>${r.categories}</td>
+          </tr>`).join('')
+        : `<tr class="empty-row"><td colspan="4">No data.</td></tr>`;
+
+      document.getElementById('invLowStock').innerHTML = d.low_stock.length
+        ? d.low_stock.map(r => `<tr>
+            <td>#${r.inventory_id}</td>
+            <td>${escapeHtml(r.client || '—')}</td>
+            <td>${escapeHtml(r.category || '—')}</td>
+            <td>${escapeHtml(r.part || '—')}</td>
+            <td>${escapeHtml(r.serial || '—')}</td>
+            <td>${escapeHtml(r.description || '—')}</td>
+            <td><span class="badge red">${r.qty}</span></td>
+            <td>${escapeHtml(r.rack || '—')}</td>
+          </tr>`).join('')
+        : `<tr class="empty-row"><td colspan="8">✅ No low stock items.</td></tr>`;
+
+         // ⭐ Decomposed count
+      document.getElementById('decomposedCount').textContent =
+        `(${d.totals.decomposed || 0} total)`;
+
+      // ⭐ Decomposed list
+      document.getElementById('invDecomposed').innerHTML = (d.decomposed && d.decomposed.length)
+        ? d.decomposed.map(r => `
+            <tr>
+              <td style="font-family:'Consolas','Monaco',monospace; font-size:12.5px; font-weight:700; color:var(--text-primary);">${escapeHtml(r.serial || '—')}</td>
+              <td><strong>${escapeHtml(r.part || '—')}</strong></td>
+              <td>${escapeHtml(r.category || '—')}</td>
+              <td>${escapeHtml(r.description || '—')}</td>
+              <td>${escapeHtml(r.client || '—')}</td>
+              <td>${escapeHtml(r.rack || '—')}</td>
+              <td>${r.so_number ? `<span class="badge blue">${escapeHtml(r.so_number)}</span>` : '—'}</td>
+              <td>${r.removed_at ? formatDateTime(r.removed_at) : '—'}</td>
+              <td>${escapeHtml(r.removed_by_name || '—')}</td>
+            </tr>
+          `).join('')
+        : `<tr class="empty-row"><td colspan="9">✅ No decomposed items yet.</td></tr>`;
+    }
+
+    // ---------- REQUESTS REPORT ----------
+    async function loadRequestsReport() {
+      const res = await fetch('/api/reports/requests' + buildQuery(), { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load requests report');
+      const d = await res.json();
+
+      document.getElementById('reqStats').innerHTML = `
+        <div class="stat-card blue"><div class="stat-value">${d.totals.total}</div><div class="stat-label">Total Requests</div></div>
+        <div class="stat-card amber"><div class="stat-value">${(d.by_status.find(x=>x.status==='pending')||{}).count || 0}</div><div class="stat-label">Pending</div></div>
+        <div class="stat-card green"><div class="stat-value">${(d.by_status.find(x=>x.status==='approved')||{}).count || 0}</div><div class="stat-label">Approved</div></div>
+        <div class="stat-card red"><div class="stat-value">${(d.by_status.find(x=>x.status==='rejected')||{}).count || 0}</div><div class="stat-label">Rejected</div></div>
+        <div class="stat-card cyan"><div class="stat-value">${(d.by_status.find(x=>x.status==='completed')||{}).count || 0}</div><div class="stat-label">Completed</div></div>
+      `;
+
+      makeChart('reqChartStatus', 'bar', {
+        labels: d.by_status.map(r => r.status.replace(/_/g, ' ')),
+        datasets: [{ label:'Requests', data: d.by_status.map(r => r.count), backgroundColor:'#3b82f6', borderRadius:6 }]
+      }, { scales: { y:{ beginAtZero:true, ticks:{ color:'#a0b3cc', precision:0 }, grid:{ color:'#252f3f' } }, x:{ ticks:{ color:'#a0b3cc', font:{size:10} }, grid:{ display:false } } }, plugins:{ legend:{display:false} } });
+
+      makeChart('reqChartType', 'doughnut', {
+        labels: d.by_type.map(r => r.request_type || 'unknown'),
+        datasets: [{ data: d.by_type.map(r => r.count), backgroundColor:['#22c55e','#8b5cf6'], borderWidth:0 }]
+      }, { cutout:'60%' });
+
+      makeChart('reqChartMonthly', 'line', {
+        labels: d.monthly.map(r => r.month),
+        datasets: [{ label:'Requests', data: d.monthly.map(r => r.count), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.15)', fill:true, tension:0.35, borderWidth:2, pointRadius:4, pointBackgroundColor:'#3b82f6' }]
+      }, { scales: { y:{ beginAtZero:true, ticks:{ color:'#a0b3cc', precision:0 }, grid:{ color:'#252f3f' } }, x:{ ticks:{ color:'#a0b3cc' }, grid:{ display:false } } }, plugins:{ legend:{display:false} } });
+
+      document.getElementById('reqTopRequesters').innerHTML = d.top_requesters.length
+        ? d.top_requesters.map(r => `<tr>
+            <td>${escapeHtml(r.requester || '—')}</td>
+            <td><strong>${r.count}</strong></td>
+          </tr>`).join('')
+        : `<tr class="empty-row"><td colspan="2">No data.</td></tr>`;
+    }
+
+    // ---------- ASSETS REPORT ----------
+async function loadAssetsReport() {
+  const res = await fetch('/api/reports/assets' + buildQuery(), { credentials: 'include' });
+  if (!res.ok) throw new Error('Failed to load assets report');
+  const d = await res.json();
+
+  const t = d.totals;
+      document.getElementById('assetStats').innerHTML = `
+    <div class="stat-card blue"><div class="stat-value">${t.total}</div><div class="stat-label">Total Assets</div></div>
+    <div class="stat-card green"><div class="stat-value">${t.in_stock}</div><div class="stat-label">In Stock</div></div>
+    <div class="stat-card amber"><div class="stat-value">${t.taken_out}</div><div class="stat-label">Taken Out</div></div>
+    <div class="stat-card red"><div class="stat-value">${t.decomposed}</div><div class="stat-label">Decomposed</div></div>
+    <div class="stat-card cyan"><div class="stat-value">${t.categories}</div><div class="stat-label">Categories</div></div>
+  `;
+    // By category — stacked bar (In Stock / Taken Out / Decomposed)
+  makeChart('assetChartCategory', 'bar', {
+    labels: d.by_category.map(r => r.category || 'Other'),
+    datasets: [
+      {
+        label: 'In Stock',
+        data: d.by_category.map(r => r.in_stock || 0),
+        backgroundColor: '#22c55e',
+        borderRadius: 4
+      },
+      {
+        label: 'Taken Out',
+        data: d.by_category.map(r => r.taken_out || 0),
+        backgroundColor: '#f59e0b',
+        borderRadius: 4
+      },
+      {
+        label: 'Decomposed',
+        data: d.by_category.map(r => r.decomposed || 0),
+        backgroundColor: '#ef4444',
+        borderRadius: 4
+      }
+    ]
+  }, {
+    scales: {
+      x: {
+        stacked: true,
+        ticks: { color: '#a0b3cc', font: { size: 11 } },
+        grid: { display: false }
+      },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: { color: '#a0b3cc', precision: 0 },
+        grid: { color: '#252f3f' }
+      }
+    },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: '#a0b3cc', font: { size: 11 }, padding: 10, boxWidth: 12 }
+      }
+    }
+  });
+
+    // By status doughnut — dynamic colors matched to status
+  const statusOrder = ['in_stock', 'taken_out', 'decomposed'];
+  const statusLabels = { in_stock: 'In Stock', taken_out: 'Taken Out', decomposed: 'Decomposed' };
+  const statusColors = { in_stock: '#22c55e', taken_out: '#f59e0b', decomposed: '#ef4444' };
+
+  const statusMap = {};
+  d.by_status.forEach(r => { statusMap[r.status] = r.count; });
+
+  const statusLabelsArr = statusOrder.filter(s => statusMap[s] > 0).map(s => statusLabels[s]);
+  const statusDataArr   = statusOrder.filter(s => statusMap[s] > 0).map(s => statusMap[s]);
+  const statusColorsArr = statusOrder.filter(s => statusMap[s] > 0).map(s => statusColors[s]);
+
+  makeChart('assetChartStatus', 'doughnut', {
+    labels: statusLabelsArr,
+    datasets: [{
+      data: statusDataArr,
+      backgroundColor: statusColorsArr,
+      borderWidth: 0
+    }]
+  }, { cutout: '60%' });
+
+  // By category table
+    document.getElementById('assetByCategory').innerHTML = d.by_category.length
+    ? d.by_category.map(r => `<tr>
+        <td>${escapeHtml(r.category || '—')}</td>
+        <td><strong>${r.total}</strong></td>
+        <td><span class="badge green">${r.in_stock}</span></td>
+        <td>${r.taken_out ? `<span class="badge amber">${r.taken_out}</span>` : '—'}</td>
+        <td>${r.decomposed ? `<span class="badge red">${r.decomposed}</span>` : '—'}</td>
+      </tr>`).join('')
+    : `<tr class="empty-row"><td colspan="5">No data.</td></tr>`;
+
+  // Recently added
+  document.getElementById('assetRecent').innerHTML = d.recent.length
+    ? d.recent.map(r => `<tr>
+        <td>#${r.asset_id}</td>
+        <td><strong>${escapeHtml(r.part || '—')}</strong></td>
+        <td style="font-family:'Consolas',monospace; font-size:12.5px;">${escapeHtml(r.serial || '—')}</td>
+        <td>${escapeHtml(r.category || '—')}</td>
+        <td>${escapeHtml(r.rack || '—')}</td>
+        <td><span class="badge ${r.status === 'in_stock' ? 'green' : 'red'}">${escapeHtml((r.status || '').replace(/_/g, ' '))}</span></td>
+        <td>${r.added_at ? new Date(r.added_at).toLocaleDateString('en-GB') : '—'}</td>
+      </tr>`).join('')
+    : `<tr class="empty-row"><td colspan="7">No assets yet.</td></tr>`;
+}
+
+    // ---------- LOANS REPORT ----------
+    async function loadLoansReport() {
+      const res = await fetch('/api/reports/loans' + buildQuery(), { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load loans report');
+      const d = await res.json();
+
+      const t = d.totals;
+      document.getElementById('loanStats').innerHTML = `
+        <div class="stat-card blue"><div class="stat-value">${t.total}</div><div class="stat-label">Total Loans</div></div>
+        <div class="stat-card green"><div class="stat-value">${t.active}</div><div class="stat-label">Active</div></div>
+        <div class="stat-card red"><div class="stat-value">${t.overdue}</div><div class="stat-label">Overdue</div></div>
+        <div class="stat-card gray"><div class="stat-value">${t.returned}</div><div class="stat-label">Returned</div></div>
+        <div class="stat-card cyan"><div class="stat-value">${t.paid}</div><div class="stat-label">Paid</div></div>
+        <div class="stat-card amber"><div class="stat-value">RM ${Number(t.revenue).toFixed(2)}</div><div class="stat-label">Active Loan Value</div></div>
+      `;
+
+      makeChart('loanChartStatus', 'doughnut', {
+        labels: d.by_status.map(r => r.status || 'unknown'),
+        datasets: [{ data: d.by_status.map(r => r.count), backgroundColor:['#22c55e','#ef4444','#64748b'], borderWidth:0 }]
+      }, { cutout:'60%' });
+
+      makeChart('loanChartMonthly', 'line', {
+        labels: d.monthly.map(r => r.month),
+        datasets: [{ label:'Loans', data: d.monthly.map(r => r.count), borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,0.15)', fill:true, tension:0.35, borderWidth:2, pointRadius:4, pointBackgroundColor:'#22c55e' }]
+      }, { scales: { y:{ beginAtZero:true, ticks:{ color:'#a0b3cc', precision:0 }, grid:{ color:'#252f3f' } }, x:{ ticks:{ color:'#a0b3cc' }, grid:{ display:false } } }, plugins:{ legend:{display:false} } });
+
+      document.getElementById('loanTopCustomers').innerHTML = d.top_customers.length
+        ? d.top_customers.map(r => `<tr>
+            <td>${escapeHtml(r.customer_name || '—')}</td>
+            <td><strong>${r.loans}</strong></td>
+            <td>RM ${Number(r.total_charge).toFixed(2)}</td>
+          </tr>`).join('')
+        : `<tr class="empty-row"><td colspan="3">No data.</td></tr>`;
+    }
+
+    // ---------- SO CODE USAGE REPORT ----------
+async function loadSOUsageReport() {
+  const q      = (document.getElementById('soUsageSearch').value || '').trim();
+  const status = document.getElementById('soUsageStatus').value;
+  const from   = document.getElementById('soUsageFrom').value;
+  const to     = document.getElementById('soUsageTo').value;
+
+  const params = new URLSearchParams();
+  if (q)      params.set('q', q);
+  if (status) params.set('status', status);
+  if (from)   params.set('from', from);
+  if (to)     params.set('to', to);
+
+  const res = await fetch('/api/reports/so-code-usage?' + params.toString(), { credentials: 'include' });
+  if (!res.ok) throw new Error('Failed to load SO usage report');
+  const d = await res.json();
+
+  const t = d.totals;
+  document.getElementById('soUsageStats').innerHTML = `
+    <div class="stat-card purple"><div class="stat-value">${t.so_codes_used}</div><div class="stat-label">SO Codes Used</div></div>
+    <div class="stat-card blue"><div class="stat-value">${t.total_requests}</div><div class="stat-label">Total Requests</div></div>
+    <div class="stat-card cyan"><div class="stat-value">${t.total_users}</div><div class="stat-label">Distinct Users</div></div>
+    <div class="stat-card green"><div class="stat-value">RM ${Number(t.total_spent).toFixed(2)}</div><div class="stat-label">Total Spent</div></div>
+  `;
+
+  const body = document.getElementById('soUsageBody');
+  if (!d.rows || d.rows.length === 0) {
+    body.innerHTML = `<tr class="empty-row"><td colspan="7">No SO Codes have any requests yet.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = d.rows.map(r => {
+    const statusClass = r.status === 'OPEN' ? 'green' : r.status === 'CLOSED' ? 'blue' : 'red';
+    return `
+      <tr>
+        <td style="font-family:'Consolas',monospace; font-weight:700; color:var(--text-primary);">${escapeHtml(r.so_number || r.so_code_id)}</td>
+        <td>${escapeHtml(r.partner_customer || '—')}</td>
+        <td><span class="badge ${statusClass}">${escapeHtml(r.status || '—')}</span></td>
+        <td style="text-align:right;"><strong>${r.request_count}</strong></td>
+        <td style="text-align:right;">${r.user_count}</td>
+        <td style="text-align:right;">RM ${Number(r.total_spent).toFixed(2)}</td>
+        <td style="text-align:center;">
+          <button class="btn-apply" style="padding:4px 12px; font-size:12px;"
+                  onclick="openSORequestsModal('${escapeAttr(r.so_code_id)}', '${escapeAttr(r.so_number || r.so_code_id)}')">
+            View
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function resetSOUsageFilters() {
+  document.getElementById('soUsageSearch').value = '';
+  document.getElementById('soUsageStatus').value = '';
+  document.getElementById('soUsageFrom').value = '';
+  document.getElementById('soUsageTo').value = '';
+  loadSOUsageReport();
+}
+
+async function openSORequestsModal(soId, soNumber) {
+  const from = document.getElementById('soUsageFrom').value;
+  const to   = document.getElementById('soUsageTo').value;
+
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to)   params.set('to', to);
+
+  // Build modal shell on first call
+  let modal = document.getElementById('soRequestsModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'soRequestsModal';
+    modal.className = 'so-modal-overlay';
+    modal.innerHTML = `
+      <div class="so-modal-box">
+        <div class="so-modal-head">
+          <div>
+            <div class="so-modal-title">SO <span id="soRequestsTitle" style="color:var(--accent); font-weight:700;"></span></div>
+            <div class="so-modal-sub">All requests and users for this SO Code</div>
+          </div>
+          <button type="button" class="so-modal-close" id="soRequestsCloseBtn" aria-label="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="so-modal-body">
+          <!-- SECTION 1: USERS -->
+          <div class="so-modal-section">
+            <div class="so-modal-section-title">
+              <i data-lucide="users"></i> Users requesting against this SO
+            </div>
+            <div class="so-users-chips" id="soUsersChips">
+              <div class="so-empty-hint">Loading…</div>
+            </div>
+          </div>
+
+          <!-- SECTION 2: REQUESTS -->
+          <div class="so-modal-section">
+            <div class="so-modal-section-title">
+              <i data-lucide="clipboard-list"></i> Requests under this SO
+            </div>
+            <div class="so-modal-table-wrap">
+              <table class="so-modal-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Requester</th>
+                    <th>Part Number</th>
+                    <th>Description</th>
+                    <th style="text-align:right;">Qty</th>
+                    <th>Notes</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="soRequestsBody">
+                  <tr class="empty-row"><td colspan="8">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="so-modal-footer">
+          <button type="button" class="so-modal-btn" id="soRequestsFooterClose">Close</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Close handlers
+    document.getElementById('soRequestsCloseBtn').addEventListener('click', closeSORequestsModal);
+    document.getElementById('soRequestsFooterClose').addEventListener('click', closeSORequestsModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeSORequestsModal();
+    });
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  // Set title
+  document.getElementById('soRequestsTitle').textContent = soNumber;
+  document.getElementById('soUsersChips').innerHTML = `<div class="so-empty-hint">Loading…</div>`;
+  document.getElementById('soRequestsBody').innerHTML = `<tr class="empty-row"><td colspan="8">Loading…</td></tr>`;
+
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';   // lock scroll behind modal
+
+  // Fetch users + requests in parallel
+  try {
+    const [usersRes, reqRes] = await Promise.all([
+      fetch(`/api/reports/so-code-usage/${encodeURIComponent(soId)}/users?` + params.toString(), { credentials: 'include' }),
+      fetch(`/api/reports/so-code-usage/${encodeURIComponent(soId)}/requests?` + params.toString(), { credentials: 'include' })
+    ]);
+
+    // --- USERS CHIPS ---
+    const usersBody = document.getElementById('soUsersChips');
+    if (usersRes.ok) {
+      const users = await usersRes.json();
+      if (!users.length) {
+        usersBody.innerHTML = `<div class="so-empty-hint">No user activity yet.</div>`;
+      } else {
+        usersBody.innerHTML = users.map(u => `
+          <div class="so-user-chip" title="${escapeAttr(u.full_name || '')}">
+            <div class="so-user-avatar">${escapeHtml((u.username || '?').slice(0,2).toUpperCase())}</div>
+            <div class="so-user-info">
+              <div class="so-user-name">${escapeHtml(u.username || '—')}</div>
+              <div class="so-user-meta">${u.request_count} request${u.request_count === 1 ? '' : 's'} · RM ${Number(u.total_spent).toFixed(2)}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+    } else {
+      usersBody.innerHTML = `<div class="so-empty-hint">Failed to load users.</div>`;
+    }
+
+    // --- REQUESTS TABLE ---
+    if (!reqRes.ok) throw new Error('Failed to load requests');
+    const rows = await reqRes.json();
+
+    if (!rows.length) {
+      document.getElementById('soRequestsBody').innerHTML = `<tr class="empty-row"><td colspan="8">No requests under this SO Code.</td></tr>`;
+      return;
+    }
+
+    document.getElementById('soRequestsBody').innerHTML = rows.map(r => {
+      const statusClass = {
+        pending:   'amber',
+        approved:  'green',
+        purchased: 'cyan',
+        delivered: 'green',
+        rejected:  'red',
+        completed: 'green'
+      }[r.status] || 'gray';
+
+      return `
+        <tr>
+          <td>#${r.request_id}</td>
+          <td>
+            <strong>${escapeHtml(r.requester_name || '—')}</strong>
+            ${r.requester_full ? `<div style="font-size:11px; color:var(--text-muted);">${escapeHtml(r.requester_full)}</div>` : ''}
+          </td>
+          <td style="font-family:'Consolas','Monaco',monospace; font-weight:700; color:var(--text-primary);">${escapeHtml(r.part || '—')}</td>
+          <td>${escapeHtml(r.description || '—')}</td>
+          <td style="text-align:right;">${r.qty ?? '—'}</td>
+          <td style="color:var(--text-muted); font-size:12px; max-width:220px;">${escapeHtml(r.notes || '—')}</td>
+          <td><span class="badge ${statusClass}">${escapeHtml((r.status || '').replace(/_/g, ' '))}</span></td>
+          <td style="color:var(--text-muted); font-size:12px; white-space:nowrap;">${r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB') : '—'}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('soRequestsBody').innerHTML = `<tr class="empty-row"><td colspan="8">❌ ${escapeHtml(e.message)}</td></tr>`;
+  }
+}
+
+function closeSORequestsModal() {
+  const m = document.getElementById('soRequestsModal');
+  if (m) m.classList.remove('show');
+  document.body.style.overflow = '';   // restore scroll
+}
+
+    // ---------- CHART HELPER ----------
+    function makeChart(canvasId, type, data, extraOpts = {}) {
+      const el = document.getElementById(canvasId);
+      if (!el) return;
+      if (charts[canvasId]) charts[canvasId].destroy();
+
+      charts[canvasId] = new Chart(el, {
+        type,
+        data,
+        options: Object.assign({
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: type === 'doughnut' ? 'right' : 'bottom',
+              labels: { color: '#a0b3cc', font: { size: 11 }, padding: 10, boxWidth: 12 }
+            }
+          }
+        }, extraOpts)
+      });
+    }
+
+// Escape key → close
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSORequestsModal();
+});
+
+    // ---------- HELPERS ----------
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    let toastTimer = null;
+    function showToast(msg, isError) {
+      let t = document.getElementById('toast');
+      if (!t) { t = document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); }
+      t.textContent = msg;
+      t.classList.toggle('error', !!isError);
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+      function formatDateTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (isNaN(d)) return '—';
+    const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return `<div style="font-weight:600; color:var(--text-primary); line-height:1.3;">${dateStr}</div>
+            <div style="font-size:10.5px; color:var(--text-muted); line-height:1.3;">${timeStr}</div>`;
+  }
+
+    // ---------- INIT ----------
+    document.addEventListener('DOMContentLoaded', async () => {
+      await checkAuth();
+      if (!currentUser) return;
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      setupTabs();
+      await loadFilterOptions();
+
+      // Restore active tab from URL
+      const initial = tabFromUrl();
+      switchTab(initial);
+    });
+  </script>
+</body>
+</html>
